@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import bcrypt from 'bcrypt';
 
 export type UserRole = 'ADMIN' | 'RECRUITER';
 
@@ -9,6 +10,7 @@ export interface IUser extends Document {
   role: UserRole;
   createdAt: Date;
   updatedAt: Date;
+  comparePassword(candidate: string): Promise<boolean>;
 }
 
 const userSchema = new Schema<IUser>(
@@ -30,7 +32,7 @@ const userSchema = new Schema<IUser>(
       type: String,
       required: [true, 'Password is required'],
       minlength: [6, 'Password must be at least 6 characters'],
-      select: false, // never return password field by default in queries
+      select: false,
     },
     role: {
       type: String,
@@ -38,12 +40,22 @@ const userSchema = new Schema<IUser>(
       default: 'RECRUITER',
     },
   },
-  {
-    timestamps: true, // adds createdAt and updatedAt automatically
-  }
+  { timestamps: true }
 );
 
-// Index on email for fast lookups during login (Phase 3)
 userSchema.index({ email: 1 });
+
+// Hash the password before saving, but only if it changed
+userSchema.pre('save', async function (next) {
+  if (!this.isModified('password')) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+// Instance method to check a plain-text password against the hash
+userSchema.methods.comparePassword = async function (candidate: string): Promise<boolean> {
+  return bcrypt.compare(candidate, this.password);
+};
 
 export const User = mongoose.model<IUser>('User', userSchema);
