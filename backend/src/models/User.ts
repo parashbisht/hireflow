@@ -43,8 +43,6 @@ const userSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-userSchema.index({ email: 1 });
-
 // Hash the password before saving, but only if it changed
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
