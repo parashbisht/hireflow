@@ -1,114 +1,235 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
+import {
+  closestCorners,
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import MainLayout from '../layouts/MainLayout';
-import { getCandidates, updateCandidateStatus } from '../services/candidateService';
-import type { Candidate, CandidateStatus } from '../types/candidate';
+import { getCandidates, updateCandidateStage } from '../services/candidateService';
+import { useToast } from '../components/Toast';
+import { getJobs } from '../services/jobService';
+import type { Candidate, CandidateStage } from '../types/candidate';
+import type { Job } from '../types/job';
 
-const COLUMNS: CandidateStatus[] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'SELECTED', 'REJECTED'];
+const STAGES: CandidateStage[] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
+const PAGE_LIMIT = 50;
 
-const COLUMN_LABELS: Record<CandidateStatus, string> = {
-  APPLIED: 'Applied', SCREENING: 'Screening', INTERVIEW: 'Interview', SELECTED: 'Selected', REJECTED: 'Rejected',
+const STAGE_STYLES: Record<CandidateStage, { accent: string; header: string }> = {
+  APPLIED: { accent: 'border-blue-500', header: 'bg-blue-50 text-blue-800' },
+  SCREENING: { accent: 'border-amber-500', header: 'bg-amber-50 text-amber-800' },
+  INTERVIEW: { accent: 'border-violet-500', header: 'bg-violet-50 text-violet-800' },
+  OFFER: { accent: 'border-indigo-500', header: 'bg-indigo-50 text-indigo-800' },
+  HIRED: { accent: 'border-green-500', header: 'bg-green-50 text-green-800' },
+  REJECTED: { accent: 'border-red-500', header: 'bg-red-50 text-red-800' },
 };
 
-const COLUMN_HEADER_COLORS: Record<CandidateStatus, string> = {
-  APPLIED: 'bg-blue-50 text-blue-700 border-blue-200',
-  SCREENING: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  INTERVIEW: 'bg-purple-50 text-purple-700 border-purple-200',
-  SELECTED: 'bg-green-50 text-green-700 border-green-200',
-  REJECTED: 'bg-red-50 text-red-700 border-red-200',
+const getJobTitle = (candidate: Candidate) =>
+  candidate.job && typeof candidate.job === 'object' ? candidate.job.title : 'Unknown job';
+
+const CandidateCardContent = ({ candidate, overlay = false }: { candidate: Candidate; overlay?: boolean }) => (
+  <article className={`w-full rounded-md border border-gray-200 bg-white p-3 shadow-sm ${overlay ? 'shadow-lg ring-2 ring-blue-500' : ''}`}>
+    <h3 className="font-medium text-sm text-gray-900">{candidate.name}</h3>
+    <p className="mt-1 text-xs text-gray-500">{getJobTitle(candidate)}</p>
+    {(candidate.skills?.length ?? 0) > 0 && (
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {(candidate.skills ?? []).slice(0, 3).map((skill) => (
+          <span key={skill} className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{skill}</span>
+        ))}
+      </div>
+    )}
+  </article>
+);
+
+const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate; disabled: boolean }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: candidate._id,
+    disabled,
+  });
+  const style: CSSProperties = transform
+    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 1 }
+    : {};
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`cursor-grab touch-pan-y active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+    >
+      <CandidateCardContent candidate={candidate} />
+    </div>
+  );
 };
 
-const jobLabel = (job: Candidate['appliedJob']) => {
-  if (typeof job === 'string') return 'Unknown job';
-  return `${job.title} @ ${job.company}`;
+const StageColumn = ({ stage, candidates, isUpdating }: {
+  stage: CandidateStage;
+  candidates: Candidate[];
+  isUpdating: boolean;
+}) => {
+  const { isOver, setNodeRef } = useDroppable({ id: `stage:${stage}` });
+  const stageStyle = STAGE_STYLES[stage];
+
+  return (
+    <section
+      ref={setNodeRef}
+      className={`flex w-[280px] shrink-0 flex-col overflow-hidden rounded-md border border-gray-200 border-t-4 bg-gray-50 ${stageStyle.accent} ${isOver ? 'bg-blue-50/60' : ''}`}
+    >
+      <header className={`flex items-center justify-between px-3 py-2.5 text-sm font-semibold ${stageStyle.header}`}>
+        <h2>{stage}</h2>
+        <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">{candidates.length}</span>
+      </header>
+      <div className="flex min-h-36 flex-1 flex-col gap-2.5 p-2.5">
+        {candidates.length === 0 ? (
+          <p className="py-5 text-center text-xs text-gray-400">No candidates</p>
+        ) : (
+          candidates.map((candidate) => (
+            <DraggableCandidateCard key={candidate._id} candidate={candidate} disabled={isUpdating} />
+          ))
+        )}
+      </div>
+    </section>
+  );
 };
 
 const Pipeline = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobFilter, setJobFilter] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const showToast = useToast();
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
-  const fetchAll = useCallback(async () => {
+  useEffect(() => {
+    getJobs({ limit: PAGE_LIMIT })
+      .then((res) => setJobs(res.data))
+      .catch(() => setJobs([]));
+  }, []);
+
+  const fetchCandidates = useCallback(async () => {
     setIsLoading(true);
     setError('');
+    setActionError('');
     try {
-      const res = await getCandidates({ limit: 500 });
-      setCandidates(res.data);
+      const firstPage = await getCandidates({ job: jobFilter, page: 1, limit: PAGE_LIMIT });
+      const allCandidates = [...firstPage.data];
+      for (let page = 2; page <= firstPage.pagination.totalPages; page += 1) {
+        const result = await getCandidates({ job: jobFilter, page, limit: PAGE_LIMIT });
+        allCandidates.push(...result.data);
+      }
+      setCandidates(allCandidates);
     } catch {
       setError('Could not load the pipeline. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [jobFilter]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAll();
-  }, [fetchAll]);
+    fetchCandidates();
+  }, [fetchCandidates]);
 
-  const handleStatusChange = async (candidate: Candidate, newStatus: CandidateStatus) => {
-    setUpdatingId(candidate._id);
-    setCandidates((prev) => prev.map((c) => (c._id === candidate._id ? { ...c, status: newStatus } : c)));
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveCandidateId(String(event.active.id));
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    setActiveCandidateId(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const candidateId = String(active.id);
+    const targetStage = String(over.id).replace('stage:', '') as CandidateStage;
+    const candidate = candidates.find((item) => item._id === candidateId);
+    if (!candidate || !STAGES.includes(targetStage) || candidate.stage === targetStage) return;
+
+    const previousStage = candidate.stage;
+    setActionError('');
+    setUpdatingId(candidateId);
+    setCandidates((current) => current.map((item) =>
+      item._id === candidateId ? { ...item, stage: targetStage } : item
+    ));
+
     try {
-      await updateCandidateStatus(candidate._id, newStatus);
+      const updatedCandidate = await updateCandidateStage(candidateId, targetStage);
+      setCandidates((current) => current.map((item) =>
+        item._id === candidateId ? { ...item, stage: updatedCandidate.stage } : item
+      ));
+      showToast('success', `${candidate.name} moved to ${targetStage}.`);
     } catch {
-      setCandidates((prev) => prev.map((c) => (c._id === candidate._id ? { ...c, status: candidate.status } : c)));
-      alert('Failed to update status. Please try again.');
+      setCandidates((current) => current.map((item) =>
+        item._id === candidateId ? { ...item, stage: previousStage } : item
+      ));
+      setActionError('Could not update the candidate stage. The candidate was moved back.');
+      showToast('error', 'Could not update the candidate stage. The candidate was moved back.');
     } finally {
       setUpdatingId(null);
     }
   };
 
+  const activeCandidate = candidates.find((candidate) => candidate._id === activeCandidateId);
+
   return (
     <MainLayout>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Hiring Pipeline</h1>
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-bold text-gray-900">Hiring Pipeline</h1>
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <span>Job</span>
+          <select
+            value={jobFilter}
+            onChange={(event) => setJobFilter(event.target.value)}
+            className="min-w-48 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All jobs</option>
+            {jobs.map((job) => <option key={job._id} value={job._id}>{job.title} @ {job.company}</option>)}
+          </select>
+        </label>
+      </div>
+
+      {actionError && (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
 
       {isLoading ? (
-        <p className="text-gray-500 text-sm">Loading pipeline...</p>
+        <p className="text-sm text-gray-500">Loading pipeline...</p>
       ) : error ? (
-        <p className="text-red-600 text-sm">{error}</p>
+        <p role="alert" className="text-sm text-red-600">{error}</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {COLUMNS.map((column) => {
-            const columnCandidates = candidates.filter((c) => c.status === column);
-            return (
-              <div key={column} className="bg-gray-100 rounded-lg p-3 min-h-[200px]">
-                <div className={`flex items-center justify-between px-3 py-2 rounded-md border mb-3 text-sm font-semibold ${COLUMN_HEADER_COLORS[column]}`}>
-                  <span>{COLUMN_LABELS[column]}</span>
-                  <span>{columnCandidates.length}</span>
-                </div>
-
-                <div className="space-y-3">
-                  {columnCandidates.length === 0 ? (
-                    <p className="text-xs text-gray-400 px-1">No candidates</p>
-                  ) : (
-                    columnCandidates.map((candidate) => (
-                      <div key={candidate._id} className="bg-white rounded-md shadow-sm border border-gray-200 p-3">
-                        <p className="font-medium text-gray-900 text-sm">{candidate.name}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{jobLabel(candidate.appliedJob)}</p>
-                        {candidate.skills.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-1 truncate">{candidate.skills.slice(0, 3).join(', ')}</p>
-                        )}
-                        {candidate.experience && <p className="text-xs text-gray-400 mt-1">{candidate.experience}</p>}
-
-                        <select
-                          value={candidate.status}
-                          disabled={updatingId === candidate._id}
-                          onChange={(e) => handleStatusChange(candidate, e.target.value as CandidateStatus)}
-                          className="mt-2 w-full text-xs border border-gray-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-                        >
-                          {COLUMNS.map((s) => (
-                            <option key={s} value={s}>{COLUMN_LABELS[s]}</option>
-                          ))}
-                        </select>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveCandidateId(null)}
+        >
+          <div className="overflow-x-auto pb-3">
+            <div className="flex min-w-max gap-3">
+              {STAGES.map((stage) => (
+                <StageColumn
+                  key={stage}
+                  stage={stage}
+                  candidates={candidates.filter((candidate) => candidate.stage === stage)}
+                  isUpdating={updatingId !== null}
+                />
+              ))}
+            </div>
+          </div>
+          <DragOverlay>{activeCandidate && <CandidateCardContent candidate={activeCandidate} overlay />}</DragOverlay>
+        </DndContext>
       )}
     </MainLayout>
   );

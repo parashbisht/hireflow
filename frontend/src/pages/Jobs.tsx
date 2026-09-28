@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import type { FormEvent } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import Modal from '../components/Modal';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../components/Toast';
 import { getJobs, createJob, updateJob, deleteJob } from '../services/jobService';
 import type { Job, EmploymentType, JobStatus } from '../types/job';
 
@@ -32,6 +34,9 @@ const Jobs = () => {
   const [form, setForm] = useState(emptyForm);
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const showToast = useToast();
 
   const fetchJobs = useCallback(async () => {
     setIsLoading(true);
@@ -88,8 +93,10 @@ const Jobs = () => {
     try {
       if (editingJob) {
         await updateJob(editingJob._id, payload);
+        showToast('success', 'Job updated successfully.');
       } else {
         await createJob(payload);
+        showToast('success', 'Job created successfully.');
       }
       setIsModalOpen(false);
       fetchJobs();
@@ -98,20 +105,26 @@ const Jobs = () => {
         err && typeof err === 'object' && 'response' in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : undefined;
-      setFormError(message || 'Failed to save job. Please check the fields and try again.');
+      const errorMessage = message || 'Failed to save job. Please check the fields and try again.';
+      setFormError(errorMessage);
+      showToast('error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (job: Job) => {
-    const confirmed = window.confirm(`Delete "${job.title}" at ${job.company}? This cannot be undone.`);
-    if (!confirmed) return;
+  const handleDelete = async () => {
+    if (!jobToDelete) return;
+    setIsDeleting(true);
     try {
-      await deleteJob(job._id);
+      await deleteJob(jobToDelete._id);
+      showToast('success', 'Job deleted successfully.');
+      setJobToDelete(null);
       fetchJobs();
     } catch {
-      alert('Failed to delete job. Please try again.');
+      showToast('error', 'Failed to delete job. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -176,7 +189,7 @@ const Jobs = () => {
                   </td>
                   <td className="px-4 py-3 text-right space-x-3">
                     <button onClick={() => openEditModal(job)} className="text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => handleDelete(job)} className="text-red-600 hover:underline">Delete</button>
+                    <button onClick={() => setJobToDelete(job)} className="text-red-600 hover:underline">Delete</button>
                   </td>
                 </tr>
               ))}
@@ -252,6 +265,14 @@ const Jobs = () => {
           </div>
         </form>
       </Modal>
+      <ConfirmDialog
+        isOpen={jobToDelete !== null}
+        title="Delete job"
+        message={jobToDelete ? `Delete "${jobToDelete.title}" at ${jobToDelete.company}? This cannot be undone.` : ''}
+        isConfirming={isDeleting}
+        onCancel={() => setJobToDelete(null)}
+        onConfirm={handleDelete}
+      />
     </MainLayout>
   );
 };

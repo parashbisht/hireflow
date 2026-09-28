@@ -5,40 +5,51 @@ import { AuthRequest } from '../middleware/auth';
 
 export const getDashboardStats = async (_req: AuthRequest, res: Response) => {
   try {
-    const [totalJobs, openJobs, totalCandidates, interviewCount, selectedCount, rejectedCount] = await Promise.all([
+    const [totalJobs, openJobs, totalCandidates, hiredCount, candidatesByStage, candidatesByJob, recentCandidates] = await Promise.all([
       Job.countDocuments(),
       Job.countDocuments({ status: 'OPEN' }),
       Candidate.countDocuments(),
-      Candidate.countDocuments({ status: 'INTERVIEW' }),
-      Candidate.countDocuments({ status: 'SELECTED' }),
-      Candidate.countDocuments({ status: 'REJECTED' }),
+      Candidate.countDocuments({ stage: 'HIRED' }),
+      Candidate.aggregate<{ stage: string; count: number }>([
+        { $group: { _id: '$stage', count: { $sum: 1 } } },
+        { $project: { _id: 0, stage: '$_id', count: 1 } },
+        { $sort: { stage: 1 } },
+      ]),
+      Candidate.aggregate<{ jobTitle: string; count: number }>([
+        { $group: { _id: '$job', count: { $sum: 1 } } },
+        { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
+        { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
+        { $project: { _id: 0, jobTitle: { $ifNull: ['$job.title', 'Unknown job'] }, count: 1 } },
+        { $sort: { count: -1 } },
+        { $limit: 5 },
+      ]),
+      Candidate.aggregate<{ name: string; jobTitle: string; stage: string; createdAt: Date }>([
+        { $sort: { createdAt: -1 } },
+        { $limit: 5 },
+        { $lookup: { from: 'jobs', localField: 'job', foreignField: '_id', as: 'job' } },
+        { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            _id: 0,
+            name: 1,
+            jobTitle: { $ifNull: ['$job.title', 'Unknown job'] },
+            stage: 1,
+            createdAt: 1,
+          },
+        },
+      ]),
     ]);
-
-    const candidatesByStatusRaw = await Candidate.aggregate([
-      { $group: { _id: '$status', count: { $sum: 1 } } },
-    ]);
-    const candidatesByStatus = candidatesByStatusRaw.map((row) => ({
-      status: row._id as string,
-      count: row.count as number,
-    }));
-
-    const applicationsByJobRaw = await Candidate.aggregate([
-      { $group: { _id: '$appliedJob', count: { $sum: 1 } } },
-      { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
-      { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
-      { $sort: { count: -1 } },
-      { $limit: 10 },
-    ]);
-    const applicationsByJob = applicationsByJobRaw.map((row) => ({
-      jobTitle: row.job ? row.job.title : 'Unknown job',
-      count: row.count as number,
-    }));
 
     return res.status(200).json({
       success: true,
       data: {
-        totalJobs, openJobs, totalCandidates, interviewCount, selectedCount, rejectedCount,
-        candidatesByStatus, applicationsByJob,
+        totalJobs,
+        openJobs,
+        totalCandidates,
+        hiredCount,
+        candidatesByStage,
+        candidatesByJob,
+        recentCandidates,
       },
     });
   } catch (error) {

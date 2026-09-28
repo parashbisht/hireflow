@@ -8,6 +8,7 @@
     "build": "tsc",
     "test": "jest",
     "start": "node dist/server.js",
+    "seed": "ts-node src/seed.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },

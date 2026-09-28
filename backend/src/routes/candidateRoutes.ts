@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import {
-  getCandidates, getCandidateById, createCandidate,
-  updateCandidate, updateCandidateStatus, deleteCandidate,
+  getCandidates,
+  getCandidateById,
+  createCandidate,
+  updateCandidate,
+  updateStage,
+  deleteCandidate,
 } from '../controllers/candidateController';
 import { protect } from '../middleware/auth';
 
@@ -12,7 +16,7 @@ router.use(protect);
 router.get('/', getCandidates);
 router.get('/:id', getCandidateById);
 router.post('/', createCandidate);
-router.patch('/:id/status', updateCandidateStatus);
+router.patch('/:id/stage', updateStage);
 router.patch('/:id', updateCandidate);
 router.delete('/:id', deleteCandidate);
 

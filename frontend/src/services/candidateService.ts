@@ -1,10 +1,10 @@
 import api from './api';
-import type { Candidate, CandidateListResponse } from '../types/candidate';
+import type { Candidate, CandidateListResponse, CandidatePayload, CandidateStage } from '../types/candidate';
 
 interface GetCandidatesParams {
   search?: string;
-  status?: string;
-  jobId?: string;
+  stage?: CandidateStage | '';
+  job?: string;
   page?: number;
   limit?: number;
 }
@@ -19,21 +19,6 @@ export const getCandidateById = async (id: string) => {
   return res.data.data;
 };
 
-export interface CandidatePayload {
-  name: string;
-  email: string;
-  phone: string;
-  location: string;
-  skills: string[];
-  experience: string;
-  resumeUrl: string;
-  linkedinUrl: string;
-  githubUrl: string;
-  appliedJob: string;
-  status: string;
-  notes: string;
-}
-
 export const createCandidate = async (payload: CandidatePayload) => {
   const res = await api.post<{ success: boolean; data: Candidate }>('/candidates', payload);
   return res.data.data;
@@ -44,8 +29,8 @@ export const updateCandidate = async (id: string, payload: Partial<CandidatePayl
   return res.data.data;
 };
 
-export const updateCandidateStatus = async (id: string, status: string) => {
-  const res = await api.patch<{ success: boolean; data: Candidate }>(`/candidates/${id}/status`, { status });
+export const updateCandidateStage = async (id: string, stage: CandidateStage) => {
+  const res = await api.patch<{ success: boolean; data: Candidate }>(`/candidates/${id}/stage`, { stage });
   return res.data.data;
 };
 

@@ -1,22 +1,28 @@
-export interface CandidatesByStatusEntry {
-  status: string;
+export interface DashboardStageCount {
+  stage: string;
   count: number;
 }
 
-export interface ApplicationsByJobEntry {
+export interface DashboardJobCount {
   jobTitle: string;
   count: number;
+}
+
+export interface RecentCandidate {
+  name: string;
+  jobTitle: string;
+  stage: string;
+  createdAt: string;
 }
 
 export interface DashboardStats {
   totalJobs: number;
   openJobs: number;
   totalCandidates: number;
-  interviewCount: number;
-  selectedCount: number;
-  rejectedCount: number;
-  candidatesByStatus: CandidatesByStatusEntry[];
-  applicationsByJob: ApplicationsByJobEntry[];
+  hiredCount: number;
+  candidatesByStage: DashboardStageCount[];
+  candidatesByJob: DashboardJobCount[];
+  recentCandidates: RecentCandidate[];
 }
 
 export interface DashboardStatsResponse {

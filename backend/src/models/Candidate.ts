@@ -1,20 +1,18 @@
-import mongoose, { Schema, Document, Types } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-export type CandidateStatus = 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'SELECTED' | 'REJECTED';
+export type CandidateStage = 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'HIRED' | 'REJECTED';
 
 export interface ICandidate extends Document {
   name: string;
   email: string;
   phone: string;
-  location: string;
   skills: string[];
-  experience: string;
-  resumeUrl: string;
-  linkedinUrl: string;
-  githubUrl: string;
-  appliedJob: Types.ObjectId;
-  status: CandidateStatus;
+  experienceYears: number;
+  resumeText: string;
+  job: mongoose.Types.ObjectId;
+  stage: CandidateStage;
   notes: string;
+  createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,26 +27,23 @@ const candidateSchema = new Schema<ICandidate>(
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
     },
-    phone: { type: String, default: '' },
-    location: { type: String, default: '' },
+    phone: { type: String, default: '', trim: true },
     skills: { type: [String], default: [] },
-    experience: { type: String, default: '' },
-    resumeUrl: { type: String, default: '' },
-    linkedinUrl: { type: String, default: '' },
-    githubUrl: { type: String, default: '' },
-    appliedJob: { type: Schema.Types.ObjectId, ref: 'Job', required: [true, 'Applied job is required'] },
-    status: {
+    experienceYears: { type: Number, default: 0, min: 0 },
+    resumeText: { type: String, default: '' },
+    job: { type: Schema.Types.ObjectId, ref: 'Job', required: [true, 'Job is required'] },
+    stage: {
       type: String,
-      enum: ['APPLIED', 'SCREENING', 'INTERVIEW', 'SELECTED', 'REJECTED'],
+      enum: ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'],
       default: 'APPLIED',
     },
     notes: { type: String, default: '' },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
 
-candidateSchema.index({ name: 'text', email: 'text', skills: 'text' });
-candidateSchema.index({ status: 1 });
-candidateSchema.index({ appliedJob: 1 });
+candidateSchema.index({ job: 1 });
+candidateSchema.index({ stage: 1 });
 
 export const Candidate = mongoose.model<ICandidate>('Candidate', candidateSchema);

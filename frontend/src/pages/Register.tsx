@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useToast } from '../components/Toast';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -11,6 +12,7 @@ const Register = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { register } = useAuth();
   const navigate = useNavigate();
+  const showToast = useToast();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -18,9 +20,12 @@ const Register = () => {
     setIsSubmitting(true);
     try {
       await register(name, email, password);
+      showToast('success', 'Account created successfully.');
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Registration failed. Please try again.');
+      const message = err.response?.data?.message || 'Registration failed. Please try again.';
+      setError(message);
+      showToast('error', message);
     } finally {
       setIsSubmitting(false);
     }

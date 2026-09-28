@@ -13,6 +13,7 @@ export interface IJob extends Document {
   experience: string;
   salaryRange: string;
   status: JobStatus;
+  createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,6 +33,7 @@ const jobSchema = new Schema<IJob>(
     experience: { type: String, default: '' },
     salaryRange: { type: String, default: '' },
     status: { type: String, enum: ['OPEN', 'CLOSED'], default: 'OPEN' },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
