@@ -31,5 +31,8 @@ Thumbs.db
 # Testing
 coverage/
 
+# Local invoice storage (generated at runtime)
+backend/storage/
+
 # Docker
 docker-compose.override.yml

@@ -25,7 +25,8 @@ export interface Candidate {
 export interface CandidateListResponse {
   success: boolean;
   data: Candidate[];
-  pagination: { total: number; page: number; limit: number; totalPages: number };
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface CandidatePayload {

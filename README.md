@@ -137,6 +137,12 @@ Run `npm run seed` from `backend/` to create the demo account and sample data.
 - Email: `demo@hireflow.com`
 - Password: `demo123`
 
+## Performance
+Local benchmark on 10,000 candidates (30 requests per endpoint, local test database):
+list p50=17.61ms p95=41.49ms
+cursor p50=11.21ms p95=16.91ms
+search p50=48.65ms p95=74.37ms
+
 ## Screenshots
 
 Add screenshots under `docs/screenshots/` and replace these placeholders with captures from the running app.

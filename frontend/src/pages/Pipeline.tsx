@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
+import type { MouseEvent } from 'react';
 import {
   closestCorners,
   DndContext,
@@ -12,14 +13,16 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import MainLayout from '../layouts/MainLayout';
-import { getCandidates, updateCandidateStage } from '../services/candidateService';
+import { downloadInvoice, getCandidates, updateCandidateStage } from '../services/candidateService';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../hooks/useAuth';
 import { getJobs } from '../services/jobService';
 import type { Candidate, CandidateStage } from '../types/candidate';
 import type { Job } from '../types/job';
 
 const STAGES: CandidateStage[] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
 const PAGE_LIMIT = 50;
+const MAX_PIPELINE_CANDIDATES = 1000;
 
 const STAGE_STYLES: Record<CandidateStage, { accent: string; header: string }> = {
   APPLIED: { accent: 'border-blue-500', header: 'bg-blue-50 text-blue-800' },
@@ -47,6 +50,47 @@ const CandidateCardContent = ({ candidate, overlay = false }: { candidate: Candi
   </article>
 );
 
+const InvoiceButton = ({ candidateId }: { candidateId: string }) => {
+  const showToast = useToast();
+  const { isAdmin, isRecruiter, isViewer } = useAuth();
+  const canDownloadInvoice = !isViewer && (isAdmin || isRecruiter);
+
+  if (!canDownloadInvoice) {
+    return null;
+  }
+
+  const handleDownloadInvoice = async (event: MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      await downloadInvoice(candidateId);
+    } catch (error) {
+      const status =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+
+      if (status === 404) {
+        showToast('error', 'Invoice is still being generated, try again in a moment.');
+        return;
+      }
+
+      showToast('error', 'Failed to download invoice. Please try again.');
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleDownloadInvoice}
+      className="mt-2 w-full rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+    >
+      Invoice
+    </button>
+  );
+};
+
 const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate; disabled: boolean }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: candidate._id,
@@ -65,6 +109,7 @@ const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate;
       className={`cursor-grab touch-pan-y active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
     >
       <CandidateCardContent candidate={candidate} />
+      {candidate.stage === 'HIRED' && <InvoiceButton candidateId={candidate._id} />}
     </div>
   );
 };
@@ -76,6 +121,7 @@ const StageColumn = ({ stage, candidates, isUpdating }: {
 }) => {
   const { isOver, setNodeRef } = useDroppable({ id: `stage:${stage}` });
   const stageStyle = STAGE_STYLES[stage];
+  const { isViewer } = useAuth();
 
   return (
     <section
@@ -91,7 +137,7 @@ const StageColumn = ({ stage, candidates, isUpdating }: {
           <p className="py-5 text-center text-xs text-gray-400">No candidates</p>
         ) : (
           candidates.map((candidate) => (
-            <DraggableCandidateCard key={candidate._id} candidate={candidate} disabled={isUpdating} />
+            <DraggableCandidateCard key={candidate._id} candidate={candidate} disabled={isUpdating || isViewer} />
           ))
         )}
       </div>
@@ -109,6 +155,7 @@ const Pipeline = () => {
   const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const showToast = useToast();
+  const { isViewer } = useAuth();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
@@ -122,12 +169,26 @@ const Pipeline = () => {
     setError('');
     setActionError('');
     try {
-      const firstPage = await getCandidates({ job: jobFilter, page: 1, limit: PAGE_LIMIT });
-      const allCandidates = [...firstPage.data];
-      for (let page = 2; page <= firstPage.pagination.totalPages; page += 1) {
-        const result = await getCandidates({ job: jobFilter, page, limit: PAGE_LIMIT });
-        allCandidates.push(...result.data);
+      const allCandidates: Candidate[] = [];
+      let cursor: string | null = null;
+      let hasMore = true;
+      let hitCap = false;
+
+      while (hasMore && allCandidates.length < MAX_PIPELINE_CANDIDATES) {
+        const res = await getCandidates({ job: jobFilter, cursor, limit: PAGE_LIMIT });
+        allCandidates.push(...res.data);
+        cursor = res.nextCursor;
+        hasMore = res.hasMore && allCandidates.length < MAX_PIPELINE_CANDIDATES;
+        if (allCandidates.length >= MAX_PIPELINE_CANDIDATES) {
+          hitCap = true;
+          break;
+        }
       }
+
+      if (hitCap) {
+        setError(`Pipeline capped at ${MAX_PIPELINE_CANDIDATES} candidates. Some results may not be shown.`);
+      }
+
       setCandidates(allCandidates);
     } catch {
       setError('Could not load the pipeline. Please try again.');
@@ -148,7 +209,7 @@ const Pipeline = () => {
   const handleDragEnd = async (event: DragEndEvent) => {
     setActiveCandidateId(null);
     const { active, over } = event;
-    if (!over) return;
+    if (!over || isViewer) return;
 
     const candidateId = String(active.id);
     const targetStage = String(over.id).replace('stage:', '') as CandidateStage;
@@ -184,7 +245,10 @@ const Pipeline = () => {
   return (
     <MainLayout>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-gray-900">Hiring Pipeline</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Hiring Pipeline</h1>
+          {isViewer && <p className="text-xs text-amber-700 font-medium mt-1">Read-only mode: drag-and-drop is disabled for viewer accounts</p>}
+        </div>
         <label className="flex items-center gap-2 text-sm text-gray-600">
           <span>Job</span>
           <select

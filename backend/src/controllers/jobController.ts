@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Job } from '../models/Job';
 import { AuthRequest } from '../middleware/auth';
 
@@ -12,11 +13,12 @@ const isOptionalText = (value: unknown, maxLength: number) =>
 
 export const getJobs = async (req: AuthRequest, res: Response) => {
   try {
+    const orgId = req.user!.orgId;
     const { search, status } = req.query;
     const page = Math.max(1, Number(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, Number(req.query.limit) || 10));
 
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = { orgId };
     if (status && ALLOWED_STATUSES.includes(String(status))) {
       filter.status = status;
     }
@@ -36,17 +38,21 @@ export const getJobs = async (req: AuthRequest, res: Response) => {
       data: jobs,
       pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch jobs' });
   }
 };
 
 export const getJobById = async (req: AuthRequest, res: Response) => {
   try {
-    const job = await Job.findById(req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid job ID' });
+    }
+
+    const job = await Job.findOne({ _id: req.params.id, orgId: req.user!.orgId });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
     return res.status(200).json({ success: true, data: job });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch job' });
   }
 };
@@ -71,12 +77,16 @@ export const createJob = async (req: AuthRequest, res: Response) => {
     if (!isText(description, 10000)) {
       return res.status(400).json({ success: false, message: 'Description must be a non-empty string of at most 10000 characters' });
     }
-    if (requiredSkills !== undefined && (
-      !Array.isArray(requiredSkills) ||
-      requiredSkills.length > 30 ||
-      requiredSkills.some((skill) => !isText(skill, 50))
-    )) {
-      return res.status(400).json({ success: false, message: 'Required skills must be an array of up to 30 strings, each at most 50 characters' });
+    if (
+      requiredSkills !== undefined &&
+      (!Array.isArray(requiredSkills) ||
+        requiredSkills.length > 30 ||
+        requiredSkills.some((skill) => !isText(skill, 50)))
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: 'Required skills must be an array of up to 30 strings, each at most 50 characters',
+      });
     }
     if (experience !== undefined && !isOptionalText(experience, 100)) {
       return res.status(400).json({ success: false, message: 'Experience must be a string of at most 100 characters' });
@@ -89,26 +99,31 @@ export const createJob = async (req: AuthRequest, res: Response) => {
     }
 
     const job = await Job.create({
-      title,
-      company,
-      location,
+      title: title.trim(),
+      company: company.trim(),
+      location: location.trim(),
       employmentType,
       description,
       requiredSkills: Array.isArray(requiredSkills) ? requiredSkills : [],
       experience: experience || '',
       salaryRange: salaryRange || '',
       status: status || 'OPEN',
+      orgId: req.user!.orgId,
       createdBy: req.user!.id,
     });
 
     return res.status(201).json({ success: true, data: job });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to create job' });
   }
 };
 
 export const updateJob = async (req: AuthRequest, res: Response) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid job ID' });
+    }
+
     const {
       title,
       company,
@@ -119,7 +134,8 @@ export const updateJob = async (req: AuthRequest, res: Response) => {
       experience,
       salaryRange,
       status,
-    } = req.body;
+    } = req.body ?? {};
+
     if (requiredSkills !== undefined && !Array.isArray(requiredSkills)) {
       return res.status(400).json({ success: false, message: 'requiredSkills must be an array' });
     }
@@ -141,21 +157,31 @@ export const updateJob = async (req: AuthRequest, res: Response) => {
       ...(salaryRange !== undefined && { salaryRange }),
       ...(status !== undefined && { status }),
     };
-    const job = await Job.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+
+    const job = await Job.findOneAndUpdate(
+      { _id: req.params.id, orgId: req.user!.orgId },
+      updates,
+      { new: true, runValidators: true }
+    );
+
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
 
     return res.status(200).json({ success: true, data: job });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to update job' });
   }
 };
 
 export const deleteJob = async (req: AuthRequest, res: Response) => {
   try {
-    const job = await Job.findByIdAndDelete(req.params.id);
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({ success: false, message: 'Invalid job ID' });
+    }
+
+    const job = await Job.findOneAndDelete({ _id: req.params.id, orgId: req.user!.orgId });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found' });
     return res.status(200).json({ success: true, message: 'Job deleted successfully' });
-  } catch (error) {
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to delete job' });
   }
 };

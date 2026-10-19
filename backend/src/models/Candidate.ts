@@ -12,6 +12,7 @@ export interface ICandidate extends Document {
   job: mongoose.Types.ObjectId;
   stage: CandidateStage;
   notes: string;
+  orgId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -38,12 +39,15 @@ const candidateSchema = new Schema<ICandidate>(
       default: 'APPLIED',
     },
     notes: { type: String, default: '' },
+    orgId: { type: Schema.Types.ObjectId, ref: 'Organization', required: [true, 'Organization ID is required'], index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
 
-candidateSchema.index({ job: 1 });
-candidateSchema.index({ stage: 1 });
+candidateSchema.index({ orgId: 1, stage: 1, createdAt: -1 });
+candidateSchema.index({ orgId: 1, createdAt: -1, _id: -1 });
+candidateSchema.index({ orgId: 1, job: 1 });
+candidateSchema.index({ name: 'text', email: 'text', skills: 'text' });
 
 export const Candidate = mongoose.model<ICandidate>('Candidate', candidateSchema);

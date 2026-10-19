@@ -1,13 +1,14 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcrypt';
 
-export type UserRole = 'ADMIN' | 'RECRUITER';
+export type UserRole = 'ADMIN' | 'RECRUITER' | 'VIEWER';
 
 export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
   role: UserRole;
+  orgId: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidate: string): Promise<boolean>;
@@ -31,13 +32,19 @@ const userSchema = new Schema<IUser>(
     password: {
       type: String,
       required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
+      minlength: [8, 'Password must be at least 8 characters'],
       select: false,
     },
     role: {
       type: String,
-      enum: ['ADMIN', 'RECRUITER'],
+      enum: ['ADMIN', 'RECRUITER', 'VIEWER'],
       default: 'RECRUITER',
+    },
+    orgId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Organization',
+      required: [true, 'Organization ID is required'],
+      index: true,
     },
   },
   { timestamps: true }

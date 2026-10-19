@@ -5,9 +5,11 @@ import morgan from 'morgan';
 import authRoutes from './routes/authRoutes';
 import jobRoutes from './routes/jobRoutes';
 import candidateRoutes from './routes/candidateRoutes';
+import './events/candidateEvents';
 import dashboardRoutes from './routes/dashboardRoutes';
 import aiRoutes from './routes/aiRoutes';
 import { errorHandler } from './middleware/errorHandler';
+import { apiLimiter, aiRateLimiter } from './middleware/rateLimiter';
 
 const app = express();
 
@@ -17,17 +19,17 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan('dev'));
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (_req, res) => {
   res.status(200).json({ success: true, message: 'HireFlow API is running', environment: process.env.NODE_ENV });
 });
 
 app.use('/api/auth', authRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/candidates', candidateRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/ai', aiRoutes);
+app.use('/api/jobs', apiLimiter, jobRoutes);
+app.use('/api/candidates', apiLimiter, candidateRoutes);
+app.use('/api/dashboard', apiLimiter, dashboardRoutes);
+app.use('/api/ai', aiRateLimiter, aiRoutes);
 
 app.use((_req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });

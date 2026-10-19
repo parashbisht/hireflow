@@ -22,8 +22,9 @@ const Register = () => {
       await register(name, email, password);
       showToast('success', 'Account created successfully.');
       navigate('/dashboard');
-    } catch (err: any) {
-      const message = err.response?.data?.message || 'Registration failed. Please try again.';
+    } catch (err: unknown) {
+      const axiosError = err as { response?: { data?: { message?: string } } };
+      const message = axiosError.response?.data?.message || 'Registration failed. Please try again.';
       setError(message);
       showToast('error', message);
     } finally {
@@ -73,11 +74,11 @@ const Register = () => {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="At least 6 characters"
+              placeholder="At least 8 characters"
             />
           </div>
 

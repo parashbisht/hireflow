@@ -1,15 +1,16 @@
 import { Router } from 'express';
 import { getJobs, getJobById, createJob, updateJob, deleteJob } from '../controllers/jobController';
 import { protect } from '../middleware/auth';
+import { requireRole } from '../middleware/role';
 
 const router = Router();
 
 router.use(protect);
 
-router.get('/', getJobs);
-router.get('/:id', getJobById);
-router.post('/', createJob);
-router.patch('/:id', updateJob);
-router.delete('/:id', deleteJob);
+router.get('/', requireRole('ADMIN', 'RECRUITER', 'VIEWER'), getJobs);
+router.get('/:id', requireRole('ADMIN', 'RECRUITER', 'VIEWER'), getJobById);
+router.post('/', requireRole('ADMIN', 'RECRUITER'), createJob);
+router.patch('/:id', requireRole('ADMIN', 'RECRUITER'), updateJob);
+router.delete('/:id', requireRole('ADMIN', 'RECRUITER'), deleteJob);
 
 export default router;

@@ -13,6 +13,7 @@ export interface IJob extends Document {
   experience: string;
   salaryRange: string;
   status: JobStatus;
+  orgId: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
@@ -33,12 +34,14 @@ const jobSchema = new Schema<IJob>(
     experience: { type: String, default: '' },
     salaryRange: { type: String, default: '' },
     status: { type: String, enum: ['OPEN', 'CLOSED'], default: 'OPEN' },
+    orgId: { type: Schema.Types.ObjectId, ref: 'Organization', required: [true, 'Organization ID is required'], index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   { timestamps: true }
 );
 
+jobSchema.index({ orgId: 1, status: 1 });
+jobSchema.index({ orgId: 1, createdAt: -1 });
 jobSchema.index({ title: 'text', company: 'text', requiredSkills: 'text' });
-jobSchema.index({ status: 1 });
 
 export const Job = mongoose.model<IJob>('Job', jobSchema);

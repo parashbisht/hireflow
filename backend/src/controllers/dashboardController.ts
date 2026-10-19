@@ -1,21 +1,35 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { Job } from '../models/Job';
 import { Candidate } from '../models/Candidate';
 import { AuthRequest } from '../middleware/auth';
 
-export const getDashboardStats = async (_req: AuthRequest, res: Response) => {
+export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
-    const [totalJobs, openJobs, totalCandidates, hiredCount, candidatesByStage, candidatesByJob, recentCandidates] = await Promise.all([
-      Job.countDocuments(),
-      Job.countDocuments({ status: 'OPEN' }),
-      Candidate.countDocuments(),
-      Candidate.countDocuments({ stage: 'HIRED' }),
+    const orgId = req.user!.orgId;
+    const orgObjectId = new mongoose.Types.ObjectId(orgId);
+
+    const [
+      totalJobs,
+      openJobs,
+      totalCandidates,
+      hiredCount,
+      candidatesByStage,
+      candidatesByJob,
+      recentCandidates,
+    ] = await Promise.all([
+      Job.countDocuments({ orgId }),
+      Job.countDocuments({ orgId, status: 'OPEN' }),
+      Candidate.countDocuments({ orgId }),
+      Candidate.countDocuments({ orgId, stage: 'HIRED' }),
       Candidate.aggregate<{ stage: string; count: number }>([
+        { $match: { orgId: orgObjectId } },
         { $group: { _id: '$stage', count: { $sum: 1 } } },
         { $project: { _id: 0, stage: '$_id', count: 1 } },
         { $sort: { stage: 1 } },
       ]),
       Candidate.aggregate<{ jobTitle: string; count: number }>([
+        { $match: { orgId: orgObjectId } },
         { $group: { _id: '$job', count: { $sum: 1 } } },
         { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
         { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
@@ -24,6 +38,7 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response) => {
         { $limit: 5 },
       ]),
       Candidate.aggregate<{ name: string; jobTitle: string; stage: string; createdAt: Date }>([
+        { $match: { orgId: orgObjectId } },
         { $sort: { createdAt: -1 } },
         { $limit: 5 },
         { $lookup: { from: 'jobs', localField: 'job', foreignField: '_id', as: 'job' } },
@@ -52,8 +67,7 @@ export const getDashboardStats = async (_req: AuthRequest, res: Response) => {
         recentCandidates,
       },
     });
-  } catch (error) {
-    console.error(error);
+  } catch (_error) {
     return res.status(500).json({ success: false, message: 'Failed to fetch dashboard stats' });
   }
 };

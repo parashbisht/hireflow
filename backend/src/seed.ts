@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { connectDB } from './config/db';
+import { Organization } from './models/Organization';
 import { Candidate, type CandidateStage } from './models/Candidate';
 import { Job, type EmploymentType, type JobStatus } from './models/Job';
 import { User } from './models/User';
@@ -119,35 +120,145 @@ const seed = async () => {
   try {
     await connectDB();
 
-    const email = 'demo@hireflow.com';
-    let recruiter = await User.findOne({ email });
+    // 1. Seed primary Demo Organization
+    let demoOrg = await Organization.findOne({ name: 'HireFlow Demo' });
+    if (!demoOrg) {
+      demoOrg = await Organization.create({ name: 'HireFlow Demo' });
+    }
+
+    // Demo Admin
+    const adminEmail = 'admin@hireflow.com';
+    let admin = await User.findOne({ email: adminEmail });
+    if (admin) {
+      admin.name = 'Demo Admin';
+      admin.password = 'demo1234';
+      admin.role = 'ADMIN';
+      admin.orgId = demoOrg._id as mongoose.Types.ObjectId;
+      await admin.save();
+    } else {
+      admin = await User.create({
+        name: 'Demo Admin',
+        email: adminEmail,
+        password: 'demo1234',
+        role: 'ADMIN',
+        orgId: demoOrg._id,
+      });
+    }
+
+    // Demo Recruiter
+    const recruiterEmail = 'demo@hireflow.com';
+    let recruiter = await User.findOne({ email: recruiterEmail });
     if (recruiter) {
       recruiter.name = 'Demo Recruiter';
-      recruiter.password = 'demo123';
+      recruiter.password = 'demo1234';
       recruiter.role = 'RECRUITER';
+      recruiter.orgId = demoOrg._id as mongoose.Types.ObjectId;
       await recruiter.save();
     } else {
       recruiter = await User.create({
         name: 'Demo Recruiter',
-        email,
-        password: 'demo123',
+        email: recruiterEmail,
+        password: 'demo1234',
         role: 'RECRUITER',
+        orgId: demoOrg._id,
       });
     }
 
-    await Candidate.deleteMany({ createdBy: recruiter._id });
-    await Job.deleteMany({ createdBy: recruiter._id });
+    // Clear existing Demo Org records
+    await Candidate.deleteMany({ orgId: demoOrg._id });
+    await Job.deleteMany({ orgId: demoOrg._id });
 
-    const jobs = await Job.create(JOBS.map((job) => ({ ...job, createdBy: recruiter._id })));
-    await Candidate.create(
-      CANDIDATES.map(({ jobIndex, ...candidate }) => ({
-        ...candidate,
-        job: jobs[jobIndex]._id,
+    const jobs = await Job.create(
+      JOBS.map((job) => ({
+        ...job,
+        orgId: demoOrg._id,
         createdBy: recruiter._id,
       }))
     );
 
-    console.log('Seeded demo recruiter demo@hireflow.com, 6 jobs, and 15 candidates.');
+    await Candidate.create(
+      CANDIDATES.map(({ jobIndex, ...candidate }) => ({
+        ...candidate,
+        job: jobs[jobIndex]._id,
+        orgId: demoOrg._id,
+        createdBy: recruiter._id,
+      }))
+    );
+
+    // 2. Seed second Organization for multi-tenancy isolation verification
+    let acmeOrg = await Organization.findOne({ name: 'Acme Corporation' });
+    if (!acmeOrg) {
+      acmeOrg = await Organization.create({ name: 'Acme Corporation' });
+    }
+
+    const acmeAdminEmail = 'admin@acme.com';
+    let acmeAdmin = await User.findOne({ email: acmeAdminEmail });
+    if (acmeAdmin) {
+      acmeAdmin.password = 'demo1234';
+      acmeAdmin.orgId = acmeOrg._id as mongoose.Types.ObjectId;
+      await acmeAdmin.save();
+    } else {
+      acmeAdmin = await User.create({
+        name: 'Acme Admin',
+        email: acmeAdminEmail,
+        password: 'demo1234',
+        role: 'ADMIN',
+        orgId: acmeOrg._id,
+      });
+    }
+
+    const acmeViewerEmail = 'viewer@acme.com';
+    let acmeViewer = await User.findOne({ email: acmeViewerEmail });
+    if (acmeViewer) {
+      acmeViewer.password = 'demo1234';
+      acmeViewer.orgId = acmeOrg._id as mongoose.Types.ObjectId;
+      await acmeViewer.save();
+    } else {
+      acmeViewer = await User.create({
+        name: 'Acme Viewer',
+        email: acmeViewerEmail,
+        password: 'demo1234',
+        role: 'VIEWER',
+        orgId: acmeOrg._id,
+      });
+    }
+
+    await Candidate.deleteMany({ orgId: acmeOrg._id });
+    await Job.deleteMany({ orgId: acmeOrg._id });
+
+    const acmeJob = await Job.create({
+      title: 'Principal Architect',
+      company: 'Acme Corporation',
+      location: 'San Francisco, CA',
+      employmentType: 'FULL_TIME',
+      description: 'Lead distributed system design at Acme Corporation.',
+      requiredSkills: ['Distributed Systems', 'Architecture', 'Go'],
+      experience: '8+ years',
+      salaryRange: '$180,000 - $220,000',
+      status: 'OPEN',
+      orgId: acmeOrg._id,
+      createdBy: acmeAdmin._id,
+    });
+
+    await Candidate.create([
+      {
+        name: 'Samir Kassam',
+        email: 'samir.kassam@acme-sample.com',
+        phone: '415-555-9090',
+        skills: ['Go', 'Kubernetes', 'Architecture'],
+        experienceYears: 9,
+        resumeText: 'Enterprise systems architect with extensive Go experience.',
+        stage: 'APPLIED',
+        notes: 'Acme candidate only.',
+        job: acmeJob._id,
+        orgId: acmeOrg._id,
+        createdBy: acmeAdmin._id,
+      },
+    ]);
+
+    console.log(
+      'Seeded HireFlow Demo Org (admin@hireflow.com, demo@hireflow.com), 6 jobs, 15 candidates; and Acme Corporation (admin@acme.com, viewer@acme.com), 1 job, 1 candidate.'
+    );
   } catch (error) {
     console.error('Seeding failed:', error);
     process.exitCode = 1;

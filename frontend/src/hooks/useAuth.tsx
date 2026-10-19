@@ -1,10 +1,14 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { User } from '../types/auth';
+import type { User, UserRole } from '../types/auth';
 import { loginUser, registerUser } from '../services/authService';
 
 interface AuthContextType {
   user: User | null;
+  role: UserRole | null;
+  isAdmin: boolean;
+  isRecruiter: boolean;
+  isViewer: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
@@ -16,7 +20,11 @@ const getStoredUser = (): User | null => {
   const savedUser = localStorage.getItem('hireflow_user');
   const savedToken = localStorage.getItem('hireflow_token');
   if (savedUser && savedToken) {
-    return JSON.parse(savedUser) as User;
+    try {
+      return JSON.parse(savedUser) as User;
+    } catch {
+      return null;
+    }
   }
   return null;
 };
@@ -44,8 +52,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
+  const role = user?.role ?? null;
+  const isAdmin = role === 'ADMIN';
+  const isRecruiter = role === 'RECRUITER';
+  const isViewer = role === 'VIEWER';
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        role,
+        isAdmin,
+        isRecruiter,
+        isViewer,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../hooks/useAuth';
 import { getJobs, createJob, updateJob, deleteJob } from '../services/jobService';
 import type { Job, EmploymentType, JobStatus } from '../types/job';
 
@@ -37,6 +38,7 @@ const Jobs = () => {
   const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const showToast = useToast();
+  const { isViewer } = useAuth();
 
   const fetchJobs = useCallback(async () => {
     setIsLoading(true);
@@ -131,10 +133,15 @@ const Jobs = () => {
   return (
     <MainLayout>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
-        <button onClick={openCreateModal} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
-          + Add Job
-        </button>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
+          {isViewer && <p className="text-xs text-amber-700 font-medium mt-1">Read-only mode (Viewer)</p>}
+        </div>
+        {!isViewer && (
+          <button onClick={openCreateModal} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+            + Add Job
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 mb-4">
@@ -172,7 +179,7 @@ const Jobs = () => {
                 <th className="px-4 py-3 font-medium">Location</th>
                 <th className="px-4 py-3 font-medium">Type</th>
                 <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium text-right">Actions</th>
+                {!isViewer && <th className="px-4 py-3 font-medium text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -187,10 +194,12 @@ const Jobs = () => {
                       {job.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right space-x-3">
-                    <button onClick={() => openEditModal(job)} className="text-blue-600 hover:underline">Edit</button>
-                    <button onClick={() => setJobToDelete(job)} className="text-red-600 hover:underline">Delete</button>
-                  </td>
+                  {!isViewer && (
+                    <td className="px-4 py-3 text-right space-x-3">
+                      <button onClick={() => openEditModal(job)} className="text-blue-600 hover:underline">Edit</button>
+                      <button onClick={() => setJobToDelete(job)} className="text-red-600 hover:underline">Delete</button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
