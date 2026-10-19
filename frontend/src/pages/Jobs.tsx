@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { FormEvent } from 'react';
+import { BriefcaseBusiness, Plus } from 'lucide-react';
 import MainLayout from '../layouts/MainLayout';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -132,30 +133,31 @@ const Jobs = () => {
 
   return (
     <MainLayout>
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Jobs</h1>
-          {isViewer && <p className="text-xs text-amber-700 font-medium mt-1">Read-only mode (Viewer)</p>}
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Open roles</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Jobs</h1>
+          {isViewer && <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">Read-only mode (Viewer)</p>}
         </div>
         {!isViewer && (
-          <button onClick={openCreateModal} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
-            + Add Job
+          <button onClick={openCreateModal} className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950">
+            <Plus size={17} /> Add job
           </button>
         )}
       </div>
 
-      <div className="flex gap-3 mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row">
         <input
           type="text"
           placeholder="Search by title, company or skill..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
         />
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         >
           <option value="">All statuses</option>
           <option value="OPEN">Open</option>
@@ -163,16 +165,24 @@ const Jobs = () => {
         </select>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         {isLoading ? (
-          <p className="p-6 text-gray-500 text-sm">Loading jobs...</p>
+          <div className="space-y-3 p-6" aria-label="Loading jobs">
+            <div className="h-4 w-1/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+          </div>
         ) : error ? (
-          <p className="p-6 text-red-600 text-sm">{error}</p>
+          <p role="alert" className="p-6 text-sm text-rose-700 dark:text-rose-300">{error}</p>
         ) : jobs.length === 0 ? (
-          <p className="p-6 text-gray-500 text-sm">No jobs found. Click "Add Job" to create one.</p>
+          <div className="px-6 py-14 text-center">
+            <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300"><BriefcaseBusiness size={24} /></span>
+            <h2 className="mt-4 text-base font-semibold text-slate-900 dark:text-white">No jobs yet</h2>
+            <p className="mx-auto mt-1 max-w-sm text-sm text-slate-600 dark:text-slate-400">Create your first opening to start organizing applicants.</p>
+            {!isViewer && <button onClick={openCreateModal} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700"><Plus size={16} /> Create your first job</button>}
+          </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-500 text-left">
+            <thead className="bg-slate-50 text-left text-slate-500 dark:bg-slate-800/80 dark:text-slate-300">
               <tr>
                 <th className="px-4 py-3 font-medium">Title</th>
                 <th className="px-4 py-3 font-medium">Company</th>
@@ -184,20 +194,20 @@ const Jobs = () => {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job._id} className="border-t border-gray-100">
-                  <td className="px-4 py-3 font-medium text-gray-900">{job.title}</td>
-                  <td className="px-4 py-3 text-gray-600">{job.company}</td>
-                  <td className="px-4 py-3 text-gray-600">{job.location}</td>
-                  <td className="px-4 py-3 text-gray-600">{job.employmentType.replace('_', ' ')}</td>
+                <tr key={job._id} className="border-t border-slate-100 dark:border-slate-800">
+                  <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{job.title}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{job.company}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{job.location}</td>
+                  <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{job.employmentType.replace('_', ' ')}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'OPEN' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${job.status === 'OPEN' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'}`}>
                       {job.status}
                     </span>
                   </td>
                   {!isViewer && (
                     <td className="px-4 py-3 text-right space-x-3">
-                      <button onClick={() => openEditModal(job)} className="text-blue-600 hover:underline">Edit</button>
-                      <button onClick={() => setJobToDelete(job)} className="text-red-600 hover:underline">Delete</button>
+                      <button onClick={() => openEditModal(job)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-300">Edit</button>
+                      <button onClick={() => setJobToDelete(job)} className="font-medium text-rose-600 hover:underline dark:text-rose-300">Delete</button>
                     </td>
                   )}
                 </tr>
@@ -208,37 +218,37 @@ const Jobs = () => {
       </div>
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingJob ? 'Edit Job' : 'Add Job'}>
-        {formError && <div className="mb-4 p-3 bg-red-50 text-red-700 text-sm rounded-md">{formError}</div>}
+        {formError && <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200">{formError}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
-            <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Job Title</label>
+            <input type="text" required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company</label>
-              <input type="text" required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Company</label>
+              <input type="text" required value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-              <input type="text" required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Location</label>
+              <input type="text" required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type</label>
-              <select value={form.employmentType} onChange={(e) => setForm({ ...form, employmentType: e.target.value as EmploymentType })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Employment Type</label>
+              <select value={form.employmentType} onChange={(e) => setForm({ ...form, employmentType: e.target.value as EmploymentType })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                 {EMPLOYMENT_TYPES.map((type) => (
                   <option key={type} value={type}>{type.replace('_', ' ')}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as JobStatus })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Status</label>
+              <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as JobStatus })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                 <option value="OPEN">Open</option>
                 <option value="CLOSED">Closed</option>
               </select>
@@ -246,28 +256,28 @@ const Jobs = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Description</label>
+            <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Required Skills (comma-separated)</label>
-            <input type="text" value={form.requiredSkills} onChange={(e) => setForm({ ...form, requiredSkills: e.target.value })} placeholder="React, Node.js, MongoDB" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Required Skills (comma-separated)</label>
+            <input type="text" value={form.requiredSkills} onChange={(e) => setForm({ ...form, requiredSkills: e.target.value })} placeholder="React, Node.js, MongoDB" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500" />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Experience</label>
-              <input type="text" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} placeholder="2-4 years" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Experience</label>
+              <input type="text" value={form.experience} onChange={(e) => setForm({ ...form, experience: e.target.value })} placeholder="2-4 years" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salary Range</label>
-              <input type="text" value={form.salaryRange} onChange={(e) => setForm({ ...form, salaryRange: e.target.value })} placeholder="₹6L - ₹10L" className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Salary Range</label>
+              <input type="text" value={form.salaryRange} onChange={(e) => setForm({ ...form, salaryRange: e.target.value })} placeholder="₹6L - ₹10L" className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500" />
             </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md text-sm font-medium text-gray-600 hover:bg-gray-100">Cancel</button>
+            <button type="button" onClick={() => setIsModalOpen(false)} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
             <button type="submit" disabled={isSubmitting} className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
               {isSubmitting ? 'Saving...' : editingJob ? 'Save Changes' : 'Create Job'}
             </button>

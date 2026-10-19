@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { MouseEvent } from 'react';
+import { CircleDashed, Loader2 } from 'lucide-react';
 import {
   closestCorners,
   DndContext,
@@ -21,29 +22,37 @@ import type { Candidate, CandidateStage } from '../types/candidate';
 import type { Job } from '../types/job';
 
 const STAGES: CandidateStage[] = ['APPLIED', 'SCREENING', 'INTERVIEW', 'OFFER', 'HIRED', 'REJECTED'];
+const STAGE_LABELS: Record<CandidateStage, string> = {
+  APPLIED: 'Applied',
+  SCREENING: 'Screening',
+  INTERVIEW: 'Interviewing',
+  OFFER: 'Offered',
+  HIRED: 'Hired',
+  REJECTED: 'Rejected',
+};
 const PAGE_LIMIT = 50;
 const MAX_PIPELINE_CANDIDATES = 1000;
 
-const STAGE_STYLES: Record<CandidateStage, { accent: string; header: string }> = {
-  APPLIED: { accent: 'border-blue-500', header: 'bg-blue-50 text-blue-800' },
-  SCREENING: { accent: 'border-amber-500', header: 'bg-amber-50 text-amber-800' },
-  INTERVIEW: { accent: 'border-violet-500', header: 'bg-violet-50 text-violet-800' },
-  OFFER: { accent: 'border-indigo-500', header: 'bg-indigo-50 text-indigo-800' },
-  HIRED: { accent: 'border-green-500', header: 'bg-green-50 text-green-800' },
-  REJECTED: { accent: 'border-red-500', header: 'bg-red-50 text-red-800' },
+const STAGE_STYLES: Record<CandidateStage, { accent: string; header: string; count: string; cardAccent: string }> = {
+  APPLIED: { accent: 'border-t-blue-500', header: 'bg-blue-50 text-blue-900 dark:bg-blue-950/60 dark:text-blue-200', count: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', cardAccent: 'border-l-blue-400' },
+  SCREENING: { accent: 'border-t-amber-500', header: 'bg-amber-50 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200', count: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200', cardAccent: 'border-l-amber-400' },
+  INTERVIEW: { accent: 'border-t-violet-500', header: 'bg-violet-50 text-violet-900 dark:bg-violet-950/60 dark:text-violet-200', count: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200', cardAccent: 'border-l-violet-400' },
+  OFFER: { accent: 'border-t-teal-500', header: 'bg-teal-50 text-teal-900 dark:bg-teal-950/60 dark:text-teal-200', count: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200', cardAccent: 'border-l-teal-400' },
+  HIRED: { accent: 'border-t-green-500', header: 'bg-green-50 text-green-900 dark:bg-green-950/60 dark:text-green-200', count: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', cardAccent: 'border-l-green-400' },
+  REJECTED: { accent: 'border-t-red-500', header: 'bg-red-50 text-red-900 dark:bg-red-950/60 dark:text-red-200', count: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', cardAccent: 'border-l-red-400' },
 };
 
 const getJobTitle = (candidate: Candidate) =>
   candidate.job && typeof candidate.job === 'object' ? candidate.job.title : 'Unknown job';
 
 const CandidateCardContent = ({ candidate, overlay = false }: { candidate: Candidate; overlay?: boolean }) => (
-  <article className={`w-full rounded-md border border-gray-200 bg-white p-3 shadow-sm ${overlay ? 'shadow-lg ring-2 ring-blue-500' : ''}`}>
-    <h3 className="font-medium text-sm text-gray-900">{candidate.name}</h3>
-    <p className="mt-1 text-xs text-gray-500">{getJobTitle(candidate)}</p>
+  <article className={`w-full rounded-xl border border-slate-200 border-l-4 ${STAGE_STYLES[candidate.stage].cardAccent} bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700 dark:bg-slate-900 ${overlay ? 'shadow-lg ring-2 ring-indigo-500' : ''}`}>
+    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{candidate.name}</h3>
+    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{getJobTitle(candidate)}</p>
     {(candidate.skills?.length ?? 0) > 0 && (
       <div className="mt-3 flex flex-wrap gap-1.5">
         {(candidate.skills ?? []).slice(0, 3).map((skill) => (
-          <span key={skill} className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600">{skill}</span>
+          <span key={skill} className="rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">{skill}</span>
         ))}
       </div>
     )}
@@ -84,7 +93,7 @@ const InvoiceButton = ({ candidateId }: { candidateId: string }) => {
     <button
       type="button"
       onClick={handleDownloadInvoice}
-      className="mt-2 w-full rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+      className="mt-2 w-full rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-1.5 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200 dark:hover:bg-emerald-900/60"
     >
       Invoice
     </button>
@@ -126,15 +135,18 @@ const StageColumn = ({ stage, candidates, isUpdating }: {
   return (
     <section
       ref={setNodeRef}
-      className={`flex w-[280px] shrink-0 flex-col overflow-hidden rounded-md border border-gray-200 border-t-4 bg-gray-50 ${stageStyle.accent} ${isOver ? 'bg-blue-50/60' : ''}`}
+      className={`flex w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 border-t-4 bg-slate-50 ${stageStyle.accent} ${isOver ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''} dark:border-slate-800 dark:bg-slate-900`}
     >
-      <header className={`flex items-center justify-between px-3 py-2.5 text-sm font-semibold ${stageStyle.header}`}>
-        <h2>{stage}</h2>
-        <span className="rounded-full bg-white/80 px-2 py-0.5 text-xs">{candidates.length}</span>
+      <header className={`flex items-center justify-between px-3 py-3 text-sm font-semibold ${stageStyle.header}`}>
+        <h2>{STAGE_LABELS[stage]}</h2>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${stageStyle.count}`}>{candidates.length}</span>
       </header>
       <div className="flex min-h-36 flex-1 flex-col gap-2.5 p-2.5">
         {candidates.length === 0 ? (
-          <p className="py-5 text-center text-xs text-gray-400">No candidates</p>
+          <div className="flex flex-col items-center py-6 text-center text-slate-400 dark:text-slate-500">
+            <CircleDashed size={18} aria-hidden="true" />
+            <p className="mt-2 text-xs">No candidates</p>
+          </div>
         ) : (
           candidates.map((candidate) => (
             <DraggableCandidateCard key={candidate._id} candidate={candidate} disabled={isUpdating || isViewer} />
@@ -246,15 +258,16 @@ const Pipeline = () => {
     <MainLayout>
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Hiring Pipeline</h1>
-          {isViewer && <p className="text-xs text-amber-700 font-medium mt-1">Read-only mode: drag-and-drop is disabled for viewer accounts</p>}
+          <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Workflow</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hiring Pipeline</h1>
+          {isViewer && <p className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">Read-only mode: drag-and-drop is disabled for viewer accounts</p>}
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-600">
+        <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
           <span>Job</span>
           <select
             value={jobFilter}
             onChange={(event) => setJobFilter(event.target.value)}
-            className="min-w-48 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="min-w-48 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           >
             <option value="">All jobs</option>
             {jobs.map((job) => <option key={job._id} value={job._id}>{job.title} @ {job.company}</option>)}
@@ -263,15 +276,17 @@ const Pipeline = () => {
       </div>
 
       {actionError && (
-        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200">
           {actionError}
         </p>
       )}
 
       {isLoading ? (
-        <p className="text-sm text-gray-500">Loading pipeline...</p>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          <Loader2 size={18} className="animate-spin text-indigo-600 dark:text-indigo-400" /> Loading pipeline...
+        </div>
       ) : error ? (
-        <p role="alert" className="text-sm text-red-600">{error}</p>
+        <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">{error}</p>
       ) : (
         <DndContext
           sensors={sensors}

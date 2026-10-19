@@ -92,24 +92,24 @@ const AiMatcher = () => {
   const getScoreTheme = (score: number) => {
     if (score >= 75) {
       return {
-        badge: 'text-green-700 bg-green-50 border-green-200',
-        bar: 'bg-green-600',
-        text: 'text-green-600',
+        badge: 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-300',
+        bar: 'bg-emerald-500',
+        text: 'text-emerald-700 dark:text-emerald-300',
         label: 'Strong Match',
       };
     }
     if (score >= 50) {
       return {
-        badge: 'text-yellow-700 bg-yellow-50 border-yellow-200',
-        bar: 'bg-yellow-500',
-        text: 'text-yellow-600',
+        badge: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-300',
+        bar: 'bg-amber-500',
+        text: 'text-amber-700 dark:text-amber-300',
         label: 'Moderate Match',
       };
     }
     return {
-      badge: 'text-red-700 bg-red-50 border-red-200',
-      bar: 'bg-red-500',
-      text: 'text-red-600',
+      badge: 'border-rose-200 bg-rose-50 text-rose-800 dark:border-rose-500/30 dark:bg-rose-500/15 dark:text-rose-300',
+      bar: 'bg-rose-500',
+      text: 'text-rose-700 dark:text-rose-300',
       label: 'Low Match',
     };
   };
@@ -119,29 +119,30 @@ const AiMatcher = () => {
   return (
     <MainLayout>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">AI Resume Matcher</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Talent insights</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">AI Resume Matcher</h1>
+        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
           Compare candidate resumes against job descriptions to assess skill overlap, strengths, and interview questions.
         </p>
       </div>
 
       {aiConfigError && (
-        <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
           <p className="font-medium">{aiConfigError}</p>
         </div>
       )}
 
       {/* Input Form */}
-      <form onSubmit={handleSubmit} className="mb-8 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+      <form onSubmit={handleSubmit} className="mb-8 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
         <div className="mb-4">
-          <label htmlFor="job-select" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="job-select" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
             Select Existing Job Opening (Optional)
           </label>
           <select
             id="job-select"
             value={selectedJobId}
             onChange={handleJobSelect}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
           >
             <option value="">-- Choose a job to auto-fill description --</option>
             {jobs.map((job) => (
@@ -154,7 +155,7 @@ const AiMatcher = () => {
 
         <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
-            <label htmlFor="job-description" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="job-description" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Job Description <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -163,12 +164,12 @@ const AiMatcher = () => {
               value={jobDescription}
               onChange={(e) => setJobDescription(e.target.value)}
               placeholder="Paste job description here or select a job from above..."
-              className="w-full rounded-md border border-gray-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
 
           <div>
-            <label htmlFor="resume-text" className="mb-1 block text-sm font-medium text-gray-700">
+            <label htmlFor="resume-text" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">
               Candidate Resume Text <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -177,7 +178,7 @@ const AiMatcher = () => {
               value={resumeText}
               onChange={(e) => setResumeText(e.target.value)}
               placeholder="Paste candidate resume text or CV summary here..."
-              className="w-full rounded-md border border-gray-300 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-xl border border-slate-300 bg-white p-3 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white"
             />
           </div>
         </div>
@@ -186,7 +187,7 @@ const AiMatcher = () => {
           <button
             type="submit"
             disabled={isLoading || isViewer}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-5 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-600/20 transition hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading ? (
               <>
@@ -201,7 +202,7 @@ const AiMatcher = () => {
             )}
           </button>
           {isViewer && (
-            <span className="text-xs text-amber-700 font-medium">
+            <span className="text-xs font-medium text-amber-700 dark:text-amber-300">
               Read-only mode (AI Matcher requires Recruiter or Admin role)
             </span>
           )}
@@ -211,7 +212,7 @@ const AiMatcher = () => {
               type="button"
               onClick={handleReset}
               disabled={isLoading}
-              className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <RefreshCw size={14} />
               Reset
@@ -224,11 +225,11 @@ const AiMatcher = () => {
       {result && scoreTheme && (
         <div className="space-y-6">
           {/* Match Score Card */}
-          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Match Overview</h2>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+            <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">Match Overview</h2>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
-                <p className="text-sm text-gray-500">Overall Match Score</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Overall Match Score</p>
                 <div className="flex items-baseline gap-3 mt-1">
                   <span className={`text-4xl font-extrabold ${scoreTheme.text}`}>{result.matchScore}%</span>
                   <span className={`inline-flex items-center rounded-full border px-3 py-0.5 text-xs font-semibold ${scoreTheme.badge}`}>
@@ -237,7 +238,7 @@ const AiMatcher = () => {
                 </div>
               </div>
               <div className="w-full sm:w-64">
-                <div className="h-3 w-full rounded-full bg-gray-200 overflow-hidden">
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${scoreTheme.bar}`}
                     style={{ width: `${Math.min(Math.max(result.matchScore, 0), 100)}%` }}
@@ -249,8 +250,8 @@ const AiMatcher = () => {
 
           {/* Skills Breakdown */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-gray-900">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
                 Matched Skills ({result.matchedSkills.length})
               </h3>
               {result.matchedSkills.length > 0 ? (
@@ -258,19 +259,19 @@ const AiMatcher = () => {
                   {result.matchedSkills.map((skill, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800"
+                      className="inline-flex items-center rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300"
                     >
                       {skill}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No matching skills identified.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No matching skills identified.</p>
               )}
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-gray-900">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
                 Missing Skills ({result.missingSkills.length})
               </h3>
               {result.missingSkills.length > 0 ? (
@@ -278,66 +279,66 @@ const AiMatcher = () => {
                   {result.missingSkills.map((skill, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-800"
+                      className="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-medium text-rose-800 dark:bg-rose-500/15 dark:text-rose-300"
                     >
                       {skill}
                     </span>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">No missing skills detected.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No missing skills detected.</p>
               )}
             </div>
           </div>
 
           {/* Detailed Lists: Strengths & Improvements */}
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-gray-900">Key Strengths</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Key Strengths</h3>
               {result.strengths.length > 0 ? (
-                <ul className="space-y-2 text-sm text-gray-700">
+                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                   {result.strengths.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-green-500" />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No specific strengths listed.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No specific strengths listed.</p>
               )}
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-3 text-base font-semibold text-gray-900">Areas for Improvement</h3>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+              <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Areas for Improvement</h3>
               {result.improvements.length > 0 ? (
-                <ul className="space-y-2 text-sm text-gray-700">
+                <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
                   {result.improvements.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-500" />
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <p className="text-sm text-gray-500">No specific improvements noted.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No specific improvements noted.</p>
               )}
             </div>
           </div>
 
           {/* Interview Questions */}
-          <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-3 text-base font-semibold text-gray-900">Suggested Interview Questions</h3>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6 dark:border-slate-800 dark:bg-slate-900">
+            <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Suggested Interview Questions</h3>
             {result.interviewQuestions.length > 0 ? (
-              <ol className="list-inside list-decimal space-y-2.5 text-sm text-gray-700">
+              <ol className="list-inside list-decimal space-y-2.5 text-sm text-slate-700 dark:text-slate-300">
                 {result.interviewQuestions.map((q, idx) => (
                   <li key={idx} className="leading-relaxed">
-                    <span className="text-gray-800">{q}</span>
+                    <span className="text-slate-800 dark:text-slate-200">{q}</span>
                   </li>
                 ))}
               </ol>
             ) : (
-              <p className="text-sm text-gray-500">No interview questions generated.</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">No interview questions generated.</p>
             )}
           </div>
         </div>
