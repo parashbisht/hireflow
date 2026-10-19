@@ -104,11 +104,11 @@ const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate;
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className={`cursor-grab touch-pan-y active:cursor-grabbing ${isDragging ? 'opacity-30' : ''}`}
+      className={isDragging ? 'opacity-30' : ''}
     >
-      <CandidateCardContent candidate={candidate} />
+      <div {...listeners} {...attributes} className="cursor-grab touch-pan-y active:cursor-grabbing">
+        <CandidateCardContent candidate={candidate} />
+      </div>
       {candidate.stage === 'HIRED' && <InvoiceButton candidateId={candidate._id} />}
     </div>
   );
@@ -175,7 +175,7 @@ const Pipeline = () => {
       let hitCap = false;
 
       while (hasMore && allCandidates.length < MAX_PIPELINE_CANDIDATES) {
-        const res = await getCandidates({ job: jobFilter, cursor, limit: PAGE_LIMIT });
+        const res = await getCandidates({ job: jobFilter, cursor: cursor ?? undefined, limit: PAGE_LIMIT });
         allCandidates.push(...res.data);
         cursor = res.nextCursor;
         hasMore = res.hasMore && allCandidates.length < MAX_PIPELINE_CANDIDATES;

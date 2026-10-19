@@ -23,7 +23,6 @@ export interface Candidate {
 }
 
 export interface CandidateListResponse {
-  success: boolean;
   data: Candidate[];
   nextCursor: string | null;
   hasMore: boolean;

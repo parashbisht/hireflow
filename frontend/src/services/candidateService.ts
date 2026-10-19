@@ -1,12 +1,12 @@
 import api from './api';
 import type { Candidate, CandidateListResponse, CandidatePayload, CandidateStage } from '../types/candidate';
 
-interface GetCandidatesParams {
+export interface GetCandidatesParams {
+  limit?: number;
+  cursor?: string;
   search?: string;
   stage?: CandidateStage | '';
   job?: string;
-  page?: number;
-  limit?: number;
 }
 
 export const getCandidates = async (params: GetCandidatesParams = {}) => {
@@ -36,4 +36,11 @@ export const updateCandidateStage = async (id: string, stage: CandidateStage) =>
 
 export const deleteCandidate = async (id: string) => {
   await api.delete(`/candidates/${id}`);
+};
+
+export const downloadInvoice = async (id: string) => {
+  const res = await api.get(`/candidates/${id}/invoice`, { responseType: 'blob' });
+  const url = window.URL.createObjectURL(res.data);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
 };

@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { FormEvent } from 'react';
 import MainLayout from '../layouts/MainLayout';
 import Modal from '../components/Modal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { useToast } from '../components/Toast';
-import { getCandidates, createCandidate, updateCandidate, deleteCandidate } from '../services/candidateService';
+import { getCandidates, createCandidate, updateCandidate, deleteCandidate, downloadInvoice } from '../services/candidateService';
 import { getJobs } from '../services/jobService';
+import { useAuth } from '../hooks/useAuth';
 import type { Candidate, CandidateStage } from '../types/candidate';
 import type { Job } from '../types/job';
 
@@ -38,6 +39,31 @@ const jobLabel = (job: Candidate['job']) => {
   return `${job.title} @ ${job.company}`;
 };
 
+const InvoiceButton = ({ candidateId }: { candidateId: string }) => {
+  const showToast = useToast();
+
+  const handleDownloadInvoice = async () => {
+    try {
+      await downloadInvoice(candidateId);
+    } catch (error) {
+      const status =
+        typeof error === 'object' && error !== null && 'response' in error
+          ? (error as { response?: { status?: number } }).response?.status
+          : undefined;
+
+      showToast('error', status === 404
+        ? 'Invoice is still being generated, try again in a moment.'
+        : 'Failed to download invoice. Please try again.');
+    }
+  };
+
+  return (
+    <button type="button" onClick={handleDownloadInvoice} className="text-emerald-700 hover:underline">
+      Invoice
+    </button>
+  );
+};
+
 const Candidates = () => {
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -46,8 +72,10 @@ const Candidates = () => {
   const [search, setSearch] = useState('');
   const [jobFilter, setJobFilter] = useState('');
   const [stageFilter, setStageFilter] = useState<CandidateStage | ''>('');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCandidate, setEditingCandidate] = useState<Candidate | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -56,6 +84,9 @@ const Candidates = () => {
   const [candidateToDelete, setCandidateToDelete] = useState<Candidate | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const showToast = useToast();
+  const { isAdmin, isRecruiter } = useAuth();
+  const requestVersionRef = useRef(0);
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     getJobs({ limit: 50 })
@@ -63,30 +94,75 @@ const Candidates = () => {
       .catch(() => setJobs([]));
   }, []);
 
-  const fetchCandidates = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
+  useEffect(() => {
+    const requestVersion = ++requestVersionRef.current;
+    let active = true;
+
+    getCandidates({ search, job: jobFilter, stage: stageFilter, limit: PAGE_LIMIT })
+      .then((res) => {
+        if (!active || requestVersion !== requestVersionRef.current) return;
+        setCandidates(res.data);
+        setNextCursor(res.nextCursor);
+        setHasMore(res.hasMore);
+      })
+      .catch(() => {
+        if (active && requestVersion === requestVersionRef.current) {
+          setError('Could not load candidates. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (active && requestVersion === requestVersionRef.current) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [search, jobFilter, stageFilter, refreshKey]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor || loadingMoreRef.current) return;
+    const requestVersion = requestVersionRef.current;
+    loadingMoreRef.current = true;
+    setIsLoadingMore(true);
+
     try {
       const res = await getCandidates({
         search,
         job: jobFilter,
         stage: stageFilter,
-        page,
+        cursor: nextCursor,
         limit: PAGE_LIMIT,
       });
-      setCandidates(res.data);
-      setTotalPages(res.pagination.totalPages || 1);
-    } catch {
-      setError('Could not load candidates. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, jobFilter, stageFilter, page]);
+      if (requestVersion !== requestVersionRef.current) return;
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchCandidates();
-  }, [fetchCandidates]);
+      setCandidates((current) => {
+        const existingIds = new Set(current.map((candidate) => candidate._id));
+        return [...current, ...res.data.filter((candidate) => !existingIds.has(candidate._id))];
+      });
+      setNextCursor(res.nextCursor);
+      setHasMore(res.hasMore);
+    } catch {
+      if (requestVersion === requestVersionRef.current) {
+        setError('Could not load more candidates. Please try again.');
+      }
+    } finally {
+      if (requestVersion === requestVersionRef.current) {
+        loadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+    }
+  }, [nextCursor, search, jobFilter, stageFilter]);
+
+  const resetCandidates = () => {
+    requestVersionRef.current += 1;
+    loadingMoreRef.current = false;
+    setCandidates([]);
+    setNextCursor(null);
+    setHasMore(false);
+    setIsLoading(true);
+    setIsLoadingMore(false);
+    setError('');
+  };
 
   const openCreateModal = () => {
     setEditingCandidate(null);
@@ -131,7 +207,8 @@ const Candidates = () => {
         showToast('success', 'Candidate added successfully.');
       }
       setIsModalOpen(false);
-      fetchCandidates();
+      resetCandidates();
+      setRefreshKey((current) => current + 1);
     } catch (err) {
       const message =
         err && typeof err === 'object' && 'response' in err
@@ -152,7 +229,8 @@ const Candidates = () => {
       await deleteCandidate(candidateToDelete._id);
       showToast('success', 'Candidate deleted successfully.');
       setCandidateToDelete(null);
-      fetchCandidates();
+      resetCandidates();
+      setRefreshKey((current) => current + 1);
     } catch {
       showToast('error', 'Failed to delete candidate. Please try again.');
     } finally {
@@ -175,16 +253,16 @@ const Candidates = () => {
           placeholder="Search by name, email or skill..."
           value={search}
           onChange={(event) => {
+            resetCandidates();
             setSearch(event.target.value);
-            setPage(1);
           }}
           className="flex-1 min-w-[220px] px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
           value={jobFilter}
           onChange={(event) => {
+            resetCandidates();
             setJobFilter(event.target.value);
-            setPage(1);
           }}
           className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -194,8 +272,8 @@ const Candidates = () => {
         <select
           value={stageFilter}
           onChange={(event) => {
+            resetCandidates();
             setStageFilter(event.target.value as CandidateStage | '');
-            setPage(1);
           }}
           className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
@@ -236,6 +314,7 @@ const Candidates = () => {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{candidate.skills.slice(0, 3).join(', ') || '—'}</td>
                   <td className="px-4 py-3 text-right space-x-3">
+                    {candidate.stage === 'HIRED' && (isAdmin || isRecruiter) && <InvoiceButton candidateId={candidate._id} />}
                     <button onClick={() => openEditModal(candidate)} className="text-blue-600 hover:underline">Edit</button>
                     <button onClick={() => setCandidateToDelete(candidate)} className="text-red-600 hover:underline">Delete</button>
                   </td>
@@ -246,13 +325,11 @@ const Candidates = () => {
         )}
       </div>
 
-      {!isLoading && !error && candidates.length > 0 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
-          <span>Page {page} of {totalPages}</span>
-          <div className="space-x-2">
-            <button disabled={page <= 1} onClick={() => setPage((current) => current - 1)} className="px-3 py-1.5 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50">Previous</button>
-            <button disabled={page >= totalPages} onClick={() => setPage((current) => current + 1)} className="px-3 py-1.5 border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50">Next</button>
-          </div>
+      {!isLoading && !error && hasMore && (
+        <div className="mt-4 flex justify-center">
+          <button onClick={loadMore} disabled={isLoadingMore} className="px-4 py-2 border border-gray-300 rounded-md text-sm text-gray-700 disabled:opacity-50 hover:bg-gray-50">
+            {isLoadingMore ? 'Loading...' : 'Load more'}
+          </button>
         </div>
       )}
 
