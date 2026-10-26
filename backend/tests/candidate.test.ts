@@ -16,7 +16,7 @@ const setupAuthAndJob = async () => {
   const registerRes = await request(app).post('/api/auth/register').send(testUser);
   const token = registerRes.body.data.token;
   const jobRes = await request(app).post('/api/jobs').set('Authorization', `Bearer ${token}`).send(sampleJob);
-  const jobId = jobRes.body.data._id;
+  const jobId = jobRes.body.data.id;
   return { token, jobId };
 };
 
@@ -47,7 +47,7 @@ describe('Candidates API', () => {
       .post('/api/candidates')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'John Smith', email: 'john@example.com', job: jobId });
-    const candidateId = createRes.body.data._id;
+    const candidateId = createRes.body.data.id;
     const statusRes = await request(app)
       .patch(`/api/candidates/${candidateId}/stage`)
       .set('Authorization', `Bearer ${token}`)
@@ -62,7 +62,7 @@ describe('Candidates API', () => {
       .post('/api/candidates')
       .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Test Candidate', email: 'test.candidate@example.com', job: jobId });
-    const candidateId = createRes.body.data._id;
+    const candidateId = createRes.body.data.id;
     const statusRes = await request(app)
       .patch(`/api/candidates/${candidateId}/stage`)
       .set('Authorization', `Bearer ${token}`)

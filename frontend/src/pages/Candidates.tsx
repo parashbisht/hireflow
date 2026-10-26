@@ -137,8 +137,8 @@ const Candidates = () => {
       if (requestVersion !== requestVersionRef.current) return;
 
       setCandidates((current) => {
-        const existingIds = new Set(current.map((candidate) => candidate._id));
-        return [...current, ...res.data.filter((candidate) => !existingIds.has(candidate._id))];
+        const existingIds = new Set(current.map((candidate) => candidate.id));
+        return [...current, ...res.data.filter((candidate) => !existingIds.has(candidate.id))];
       });
       setNextCursor(res.nextCursor);
       setHasMore(res.hasMore);
@@ -181,7 +181,7 @@ const Candidates = () => {
       skills: candidate.skills.join(', '),
       experienceYears: candidate.experienceYears,
       resumeText: candidate.resumeText,
-      job: typeof candidate.job === 'string' ? candidate.job : candidate.job?._id ?? '',
+      job: typeof candidate.job === 'string' ? candidate.job : candidate.job?.id ?? '',
       stage: candidate.stage,
       notes: candidate.notes,
     });
@@ -201,7 +201,7 @@ const Candidates = () => {
 
     try {
       if (editingCandidate) {
-        await updateCandidate(editingCandidate._id, payload);
+        await updateCandidate(editingCandidate.id, payload);
         showToast('success', 'Candidate updated successfully.');
       } else {
         await createCandidate(payload);
@@ -227,7 +227,7 @@ const Candidates = () => {
     if (!candidateToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteCandidate(candidateToDelete._id);
+      await deleteCandidate(candidateToDelete.id);
       showToast('success', 'Candidate deleted successfully.');
       setCandidateToDelete(null);
       resetCandidates();
@@ -271,7 +271,7 @@ const Candidates = () => {
           className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         >
           <option value="">All jobs</option>
-          {jobs.map((job) => <option key={job._id} value={job._id}>{job.title} @ {job.company}</option>)}
+          {jobs.map((job) => <option key={job.id} value={job.id}>{job.title} @ {job.company}</option>)}
         </select>
         <select
           value={stageFilter}
@@ -315,7 +315,7 @@ const Candidates = () => {
             </thead>
             <tbody>
               {candidates.map((candidate) => (
-                <tr key={candidate._id} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={candidate.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{candidate.name}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{candidate.email}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{jobLabel(candidate.job)}</td>
@@ -326,7 +326,7 @@ const Candidates = () => {
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{candidate.skills.slice(0, 3).join(', ') || '—'}</td>
                   <td className="px-4 py-3 text-right space-x-3">
-                    {candidate.stage === 'HIRED' && (isAdmin || isRecruiter) && <InvoiceButton candidateId={candidate._id} />}
+                    {candidate.stage === 'HIRED' && (isAdmin || isRecruiter) && <InvoiceButton candidateId={candidate.id} />}
                     <button onClick={() => openEditModal(candidate)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-300">Edit</button>
                     <button onClick={() => setCandidateToDelete(candidate)} className="font-medium text-rose-600 hover:underline dark:text-rose-300">Delete</button>
                   </td>
@@ -368,7 +368,7 @@ const Candidates = () => {
               <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200">Job</label>
               <select required value={form.job} onChange={(event) => setForm({ ...form, job: event.target.value })} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-white">
                 <option value="">Select a job...</option>
-                {jobs.map((job) => <option key={job._id} value={job._id}>{job.title} @ {job.company}</option>)}
+                {jobs.map((job) => <option key={job.id} value={job.id}>{job.title} @ {job.company}</option>)}
               </select>
             </div>
           </div>

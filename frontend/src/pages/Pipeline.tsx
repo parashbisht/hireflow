@@ -102,7 +102,7 @@ const InvoiceButton = ({ candidateId }: { candidateId: string }) => {
 
 const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate; disabled: boolean }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: candidate._id,
+    id: candidate.id,
     disabled,
   });
   const style: CSSProperties = transform
@@ -118,7 +118,7 @@ const DraggableCandidateCard = ({ candidate, disabled }: { candidate: Candidate;
       <div {...listeners} {...attributes} className="cursor-grab touch-pan-y active:cursor-grabbing">
         <CandidateCardContent candidate={candidate} />
       </div>
-      {candidate.stage === 'HIRED' && <InvoiceButton candidateId={candidate._id} />}
+      {candidate.stage === 'HIRED' && <InvoiceButton candidateId={candidate.id} />}
     </div>
   );
 };
@@ -149,7 +149,7 @@ const StageColumn = ({ stage, candidates, isUpdating }: {
           </div>
         ) : (
           candidates.map((candidate) => (
-            <DraggableCandidateCard key={candidate._id} candidate={candidate} disabled={isUpdating || isViewer} />
+            <DraggableCandidateCard key={candidate.id} candidate={candidate} disabled={isUpdating || isViewer} />
           ))
         )}
       </div>
@@ -177,9 +177,6 @@ const Pipeline = () => {
   }, []);
 
   const fetchCandidates = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
-    setActionError('');
     try {
       const allCandidates: Candidate[] = [];
       let cursor: string | null = null;
@@ -210,7 +207,6 @@ const Pipeline = () => {
   }, [jobFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchCandidates();
   }, [fetchCandidates]);
 
@@ -225,25 +221,25 @@ const Pipeline = () => {
 
     const candidateId = String(active.id);
     const targetStage = String(over.id).replace('stage:', '') as CandidateStage;
-    const candidate = candidates.find((item) => item._id === candidateId);
+    const candidate = candidates.find((item) => item.id === candidateId);
     if (!candidate || !STAGES.includes(targetStage) || candidate.stage === targetStage) return;
 
     const previousStage = candidate.stage;
     setActionError('');
     setUpdatingId(candidateId);
     setCandidates((current) => current.map((item) =>
-      item._id === candidateId ? { ...item, stage: targetStage } : item
+      item.id === candidateId ? { ...item, stage: targetStage } : item
     ));
 
     try {
       const updatedCandidate = await updateCandidateStage(candidateId, targetStage);
       setCandidates((current) => current.map((item) =>
-        item._id === candidateId ? { ...item, stage: updatedCandidate.stage } : item
+        item.id === candidateId ? { ...item, stage: updatedCandidate.stage } : item
       ));
       showToast('success', `${candidate.name} moved to ${targetStage}.`);
     } catch {
       setCandidates((current) => current.map((item) =>
-        item._id === candidateId ? { ...item, stage: previousStage } : item
+        item.id === candidateId ? { ...item, stage: previousStage } : item
       ));
       setActionError('Could not update the candidate stage. The candidate was moved back.');
       showToast('error', 'Could not update the candidate stage. The candidate was moved back.');
@@ -252,7 +248,7 @@ const Pipeline = () => {
     }
   };
 
-  const activeCandidate = candidates.find((candidate) => candidate._id === activeCandidateId);
+  const activeCandidate = candidates.find((candidate) => candidate.id === activeCandidateId);
 
   return (
     <MainLayout>
@@ -266,11 +262,16 @@ const Pipeline = () => {
           <span>Job</span>
           <select
             value={jobFilter}
-            onChange={(event) => setJobFilter(event.target.value)}
+            onChange={(event) => {
+              setError('');
+              setActionError('');
+              setIsLoading(true);
+              setJobFilter(event.target.value);
+            }}
             className="min-w-48 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
           >
             <option value="">All jobs</option>
-            {jobs.map((job) => <option key={job._id} value={job._id}>{job.title} @ {job.company}</option>)}
+            {jobs.map((job) => <option key={job.id} value={job.id}>{job.title} @ {job.company}</option>)}
           </select>
         </label>
       </div>

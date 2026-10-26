@@ -1,27 +1,14 @@
-import mongoose from 'mongoose';
+import { prisma } from '../lib/prisma';
 import { env } from './env';
 
-/**
- * Connects to MongoDB using Mongoose.
- * Called once when the server starts (see server.ts).
- */
 export const connectDB = async (): Promise<void> => {
-  if (!env.mongoUri) {
-    console.error('❌ MONGO_URI is not set in your .env file.');
-    console.error('   Add your MongoDB Atlas connection string to backend/.env');
-    process.exit(1);
+  if (!env.databaseUrl) {
+    throw new Error('DATABASE_URL is required to connect to PostgreSQL');
   }
-
-  try {
-    await mongoose.connect(env.mongoUri);
-    console.log('✅ MongoDB connected successfully');
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
-    process.exit(1);
-  }
+  await prisma.$connect();
+  console.log('PostgreSQL connected successfully');
 };
 
-// Optional but useful: log if the connection drops later (e.g. network blip)
-mongoose.connection.on('disconnected', () => {
-  console.warn('⚠️  MongoDB disconnected');
-});
+export const disconnectDB = async (): Promise<void> => {
+  await prisma.$disconnect();
+};

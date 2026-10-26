@@ -2,7 +2,7 @@ export type EmploymentType = 'FULL_TIME' | 'PART_TIME' | 'INTERNSHIP' | 'CONTRAC
 export type JobStatus = 'OPEN' | 'CLOSED';
 
 export interface Job {
-  _id: string;
+  id: string;
   title: string;
   company: string;
   location: string;

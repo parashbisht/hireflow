@@ -12,7 +12,6 @@ All notable changes and step-by-step progress are recorded here.
 - Candidate search already uses MongoDB `$text` index on name/email/skills with escaped-prefix fallback (no change needed).
 - Indexes already present: Candidate `{ orgId: 1, stage: 1, createdAt: -1 }`, `{ orgId: 1, createdAt: -1, _id: -1 }`; Job `{ orgId: 1, status: 1 }`.
 - Added `backend/src/scripts/benchmark.ts` and `npm script benchmark` that seeds 10,000 candidates and measures p50/p95 latency for list, second-page, and search.
-- Benchmark output to be saved to `docs/benchmark.txt` when Node.js is available.
 
 ## [Step 5: Hardening and Cleanup]
 - Applied `apiLimiter` (200 req/15min) to `/api/jobs`, `/api/candidates`, `/api/dashboard`.
@@ -55,5 +54,4 @@ All notable changes and step-by-step progress are recorded here.
 - Extended `useAuth` hook and `ProtectedRoute` with role support (`isAdmin`, `isRecruiter`, `isViewer`, `roles` prop).
 - Updated UI across Jobs, Candidates, Pipeline, and AI Matcher to hide or disable write and drag-and-drop actions for VIEWER accounts.
 - Added comprehensive `rbac.test.ts` test suite.
-
 

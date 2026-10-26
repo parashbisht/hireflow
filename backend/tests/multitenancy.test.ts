@@ -10,7 +10,6 @@ describe('Multi-Tenancy Isolation', () => {
   let orgBCandidateId: string;
 
   beforeEach(async () => {
-    // Register User A (Org A Admin)
     const resA = await request(app).post('/api/auth/register').send({
       name: 'Alice Admin',
       email: 'alice@orga.com',
@@ -19,7 +18,6 @@ describe('Multi-Tenancy Isolation', () => {
     });
     orgAToken = resA.body.data.token;
 
-    // Register User B (Org B Admin)
     const resB = await request(app).post('/api/auth/register').send({
       name: 'Bob Admin',
       email: 'bob@orgb.com',
@@ -28,7 +26,6 @@ describe('Multi-Tenancy Isolation', () => {
     });
     orgBToken = resB.body.data.token;
 
-    // Org A creates a job
     const jobARes = await request(app)
       .post('/api/jobs')
       .set('Authorization', `Bearer ${orgAToken}`)
@@ -40,9 +37,8 @@ describe('Multi-Tenancy Isolation', () => {
         description: 'Alpha job description',
         requiredSkills: ['TypeScript'],
       });
-    orgAJobId = jobARes.body.data._id;
+    orgAJobId = jobARes.body.data.id;
 
-    // Org B creates a job
     const jobBRes = await request(app)
       .post('/api/jobs')
       .set('Authorization', `Bearer ${orgBToken}`)
@@ -54,9 +50,8 @@ describe('Multi-Tenancy Isolation', () => {
         description: 'Beta job description',
         requiredSkills: ['Go'],
       });
-    orgBJobId = jobBRes.body.data._id;
+    orgBJobId = jobBRes.body.data.id;
 
-    // Org A creates a candidate
     const candARes = await request(app)
       .post('/api/candidates')
       .set('Authorization', `Bearer ${orgAToken}`)
@@ -66,9 +61,8 @@ describe('Multi-Tenancy Isolation', () => {
         job: orgAJobId,
         skills: ['TypeScript'],
       });
-    orgACandidateId = candARes.body.data._id;
+    orgACandidateId = candARes.body.data.id;
 
-    // Org B creates a candidate
     const candBRes = await request(app)
       .post('/api/candidates')
       .set('Authorization', `Bearer ${orgBToken}`)
@@ -78,7 +72,7 @@ describe('Multi-Tenancy Isolation', () => {
         job: orgBJobId,
         skills: ['Go'],
       });
-    orgBCandidateId = candBRes.body.data._id;
+    orgBCandidateId = candBRes.body.data.id;
   });
 
   it('Org A user cannot read Org B job and receives 404', async () => {
@@ -110,7 +104,7 @@ describe('Multi-Tenancy Isolation', () => {
       .set('Authorization', `Bearer ${orgAToken}`);
     expect(res.status).toBe(200);
     expect(res.body.data).toHaveLength(1);
-    expect(res.body.data[0]._id).toBe(orgAJobId);
+    expect(res.body.data[0].id).toBe(orgAJobId);
   });
 
   it('Org A can read its own candidate', async () => {
@@ -177,7 +171,6 @@ describe('Multi-Tenancy Isolation', () => {
     expect(res.status).toBe(201);
     expect(res.body.data.role).toBe('RECRUITER');
 
-    // Ray can log in and see Org A job
     const loginRes = await request(app).post('/api/auth/login').send({
       email: 'ray@orga.com',
       password: 'password123',
@@ -189,6 +182,6 @@ describe('Multi-Tenancy Isolation', () => {
       .get('/api/jobs')
       .set('Authorization', `Bearer ${rayToken}`);
     expect(jobsRes.body.data).toHaveLength(1);
-    expect(jobsRes.body.data[0]._id).toBe(orgAJobId);
+    expect(jobsRes.body.data[0].id).toBe(orgAJobId);
   });
 });

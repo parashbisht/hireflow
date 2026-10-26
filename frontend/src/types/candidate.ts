@@ -1,13 +1,13 @@
 export type CandidateStage = 'APPLIED' | 'SCREENING' | 'INTERVIEW' | 'OFFER' | 'HIRED' | 'REJECTED';
 
 export interface CandidateJobSummary {
-  _id: string;
+  id: string;
   title: string;
   company: string;
 }
 
 export interface Candidate {
-  _id: string;
+  id: string;
   name: string;
   email: string;
   phone: string;
@@ -17,7 +17,8 @@ export interface Candidate {
   job: CandidateJobSummary | string;
   stage: CandidateStage;
   notes: string;
-  createdBy: string;
+  organizationId: string;
+  createdById: string;
   createdAt: string;
   updatedAt: string;
 }

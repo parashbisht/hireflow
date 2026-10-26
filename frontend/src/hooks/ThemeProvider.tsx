@@ -14,7 +14,7 @@ const ThemeProvider = ({ children }: { children: ReactNode }) => {
     try {
       window.localStorage.setItem('hireflow_theme', theme);
     } catch {
-      // Keep theme changes available for the current session if storage is blocked.
+      return;
     }
   }, [theme]);
 

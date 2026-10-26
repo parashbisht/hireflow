@@ -7,16 +7,10 @@ const navItems = [
   { to: '/jobs', label: 'Jobs' },
   { to: '/candidates', label: 'Candidates' },
   { to: '/pipeline', label: 'Pipeline' },
-  { to: '/ai-matcher', label: 'AI Resume Matcher', restrictedTo: ['ADMIN', 'RECRUITER'] },
 ];
 
 const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { user, role, isViewer, logout } = useAuth();
-
-  const filteredNavItems = navItems.filter((item) => {
-    if (item.restrictedTo && isViewer) return false;
-    return true;
-  });
+  const { user, role, logout } = useAuth();
 
   return (
     <>
@@ -52,7 +46,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {filteredNavItems.map((item) => (
+          {navItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

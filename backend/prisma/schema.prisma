@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  RECRUITER
+  VIEWER
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  INTERNSHIP
+  CONTRACT
+}
+
+enum JobStatus {
+  OPEN
+  CLOSED
+}
+
+enum CandidateStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+}
+
+model Organization {
+  id         String      @id @default(uuid()) @db.Uuid
+  name       String      @db.VarChar(100)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  users      User[]
+  jobs       Job[]
+  candidates Candidate[]
+  invoices   Invoice[]
+}
+
+model User {
+  id                 String       @id @default(uuid()) @db.Uuid
+  name               String       @db.VarChar(100)
+  email              String       @unique @db.VarChar(254)
+  passwordHash       String       @db.VarChar(255)
+  role               UserRole     @default(RECRUITER)
+  organizationId     String       @db.Uuid
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdJobs        Job[]        @relation("JobCreator")
+  createdCandidates  Candidate[]  @relation("CandidateCreator")
+  createdInvoices    Invoice[]    @relation("InvoiceCreator")
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  @@index([organizationId])
+}
+
+model Job {
+  id                String         @id @default(uuid()) @db.Uuid
+  title             String         @db.VarChar(120)
+  company           String         @db.VarChar(120)
+  location          String         @db.VarChar(120)
+  employmentType    EmploymentType
+  description       String
+  requiredSkills    String[]       @default([])
+  experience        String         @default("") @db.VarChar(100)
+  salaryRange       String         @default("") @db.VarChar(100)
+  status            JobStatus      @default(OPEN)
+  organizationId    String         @db.Uuid
+  organization      Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById       String         @db.Uuid
+  createdBy         User           @relation("JobCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  candidates        Candidate[]
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([organizationId, status])
+  @@index([organizationId, createdAt])
+}
+
+model Candidate {
+  id                String          @id @default(uuid()) @db.Uuid
+  name              String          @db.VarChar(100)
+  email             String          @db.VarChar(254)
+  phone             String          @default("") @db.VarChar(30)
+  skills            String[]        @default([])
+  experienceYears   Int             @default(0)
+  resumeText        String          @default("")
+  stage             CandidateStage  @default(APPLIED)
+  notes             String          @default("")
+  jobId             String          @db.Uuid
+  job               Job             @relation(fields: [jobId], references: [id], onDelete: Restrict)
+  organizationId    String          @db.Uuid
+  organization      Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById       String          @db.Uuid
+  createdBy         User            @relation("CandidateCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  invoice           Invoice?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([organizationId, stage, createdAt])
+  @@index([organizationId, createdAt, id])
+  @@index([organizationId, jobId])
+}
+
+model Invoice {
+  id                String        @id @default(uuid()) @db.Uuid
+  invoiceNumber     String        @unique @db.VarChar(40)
+  status            InvoiceStatus @default(SENT)
+  total             Decimal       @db.Decimal(10, 2)
+  organizationId    String        @db.Uuid
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdById       String        @db.Uuid
+  createdBy         User          @relation("InvoiceCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  candidateId       String        @unique @db.Uuid
+  candidate         Candidate     @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  items             InvoiceItem[]
+  issuedAt          DateTime      @default(now())
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model InvoiceItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  description String   @db.VarChar(255)
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  invoiceId   String   @db.Uuid
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}

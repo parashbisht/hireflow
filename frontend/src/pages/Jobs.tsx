@@ -42,8 +42,6 @@ const Jobs = () => {
   const { isViewer } = useAuth();
 
   const fetchJobs = useCallback(async () => {
-    setIsLoading(true);
-    setError('');
     try {
       const res = await getJobs({ search, status: statusFilter, limit: 50 });
       setJobs(res.data);
@@ -55,7 +53,6 @@ const Jobs = () => {
   }, [search, statusFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchJobs();
   }, [fetchJobs]);
 
@@ -95,13 +92,15 @@ const Jobs = () => {
 
     try {
       if (editingJob) {
-        await updateJob(editingJob._id, payload);
+        await updateJob(editingJob.id, payload);
         showToast('success', 'Job updated successfully.');
       } else {
         await createJob(payload);
         showToast('success', 'Job created successfully.');
       }
       setIsModalOpen(false);
+      setError('');
+      setIsLoading(true);
       fetchJobs();
     } catch (err) {
       const message =
@@ -120,9 +119,11 @@ const Jobs = () => {
     if (!jobToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteJob(jobToDelete._id);
+      await deleteJob(jobToDelete.id);
       showToast('success', 'Job deleted successfully.');
       setJobToDelete(null);
+      setError('');
+      setIsLoading(true);
       fetchJobs();
     } catch {
       showToast('error', 'Failed to delete job. Please try again.');
@@ -151,12 +152,20 @@ const Jobs = () => {
           type="text"
           placeholder="Search by title, company or skill..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setError('');
+            setIsLoading(true);
+            setSearch(e.target.value);
+          }}
           className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-500"
         />
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => {
+            setError('');
+            setIsLoading(true);
+            setStatusFilter(e.target.value);
+          }}
           className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
         >
           <option value="">All statuses</option>
@@ -194,7 +203,7 @@ const Jobs = () => {
             </thead>
             <tbody>
               {jobs.map((job) => (
-                <tr key={job._id} className="border-t border-slate-100 dark:border-slate-800">
+                <tr key={job.id} className="border-t border-slate-100 dark:border-slate-800">
                   <td className="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{job.title}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{job.company}</td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">{job.location}</td>

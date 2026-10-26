@@ -1,6 +1,6 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from './auth';
-import type { UserRole } from '../models/User';
+import type { UserRole } from '@prisma/client';
 
 export const requireRole = (...roles: UserRole[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -15,4 +15,3 @@ export const requireRole = (...roles: UserRole[]) => {
     return next();
   };
 };
-

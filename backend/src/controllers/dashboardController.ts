@@ -1,59 +1,64 @@
+import { CandidateStage } from '@prisma/client';
 import { Response } from 'express';
-import mongoose from 'mongoose';
-import { Job } from '../models/Job';
-import { Candidate } from '../models/Candidate';
 import { AuthRequest } from '../middleware/auth';
+import { prisma } from '../lib/prisma';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {
-    const orgId = req.user!.orgId;
-    const orgObjectId = new mongoose.Types.ObjectId(orgId);
-
+    const organizationId = req.user!.orgId;
     const [
       totalJobs,
       openJobs,
       totalCandidates,
       hiredCount,
-      candidatesByStage,
-      candidatesByJob,
+      stageCounts,
+      jobCounts,
       recentCandidates,
     ] = await Promise.all([
-      Job.countDocuments({ orgId }),
-      Job.countDocuments({ orgId, status: 'OPEN' }),
-      Candidate.countDocuments({ orgId }),
-      Candidate.countDocuments({ orgId, stage: 'HIRED' }),
-      Candidate.aggregate<{ stage: string; count: number }>([
-        { $match: { orgId: orgObjectId } },
-        { $group: { _id: '$stage', count: { $sum: 1 } } },
-        { $project: { _id: 0, stage: '$_id', count: 1 } },
-        { $sort: { stage: 1 } },
-      ]),
-      Candidate.aggregate<{ jobTitle: string; count: number }>([
-        { $match: { orgId: orgObjectId } },
-        { $group: { _id: '$job', count: { $sum: 1 } } },
-        { $lookup: { from: 'jobs', localField: '_id', foreignField: '_id', as: 'job' } },
-        { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
-        { $project: { _id: 0, jobTitle: { $ifNull: ['$job.title', 'Unknown job'] }, count: 1 } },
-        { $sort: { count: -1 } },
-        { $limit: 5 },
-      ]),
-      Candidate.aggregate<{ name: string; jobTitle: string; stage: string; createdAt: Date }>([
-        { $match: { orgId: orgObjectId } },
-        { $sort: { createdAt: -1 } },
-        { $limit: 5 },
-        { $lookup: { from: 'jobs', localField: 'job', foreignField: '_id', as: 'job' } },
-        { $unwind: { path: '$job', preserveNullAndEmptyArrays: true } },
-        {
-          $project: {
-            _id: 0,
-            name: 1,
-            jobTitle: { $ifNull: ['$job.title', 'Unknown job'] },
-            stage: 1,
-            createdAt: 1,
-          },
-        },
-      ]),
+      prisma.job.count({ where: { organizationId } }),
+      prisma.job.count({ where: { organizationId, status: 'OPEN' } }),
+      prisma.candidate.count({ where: { organizationId } }),
+      prisma.candidate.count({ where: { organizationId, stage: 'HIRED' } }),
+      prisma.candidate.groupBy({
+        by: ['stage'],
+        where: { organizationId },
+        _count: { _all: true },
+        orderBy: { stage: 'asc' },
+      }),
+      prisma.candidate.groupBy({
+        by: ['jobId'],
+        where: { organizationId },
+        _count: { _all: true },
+        orderBy: { _count: { jobId: 'desc' } },
+        take: 5,
+      }),
+      prisma.candidate.findMany({
+        where: { organizationId },
+        include: { job: { select: { title: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
     ]);
+
+    const jobs = await prisma.job.findMany({
+      where: { id: { in: jobCounts.map(({ jobId }) => jobId) } },
+      select: { id: true, title: true },
+    });
+    const jobTitles = new Map(jobs.map((job) => [job.id, job.title]));
+    const candidatesByStage = stageCounts.map(({ stage, _count }) => ({
+      stage: stage as CandidateStage,
+      count: _count._all,
+    }));
+    const candidatesByJob = jobCounts.map(({ jobId, _count }) => ({
+      jobTitle: jobTitles.get(jobId) ?? 'Unknown job',
+      count: _count._all,
+    }));
+    const recent = recentCandidates.map(({ name, job, stage, createdAt }) => ({
+      name,
+      jobTitle: job.title,
+      stage,
+      createdAt,
+    }));
 
     return res.status(200).json({
       success: true,
@@ -64,7 +69,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         hiredCount,
         candidatesByStage,
         candidatesByJob,
-        recentCandidates,
+        recentCandidates: recent,
       },
     });
   } catch (_error) {

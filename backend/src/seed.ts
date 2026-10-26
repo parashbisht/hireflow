@@ -1,11 +1,9 @@
-import mongoose from 'mongoose';
-import { connectDB } from './config/db';
-import { Organization } from './models/Organization';
-import { Candidate, type CandidateStage } from './models/Candidate';
-import { Job, type EmploymentType, type JobStatus } from './models/Job';
-import { User } from './models/User';
+import bcrypt from 'bcrypt';
+import { CandidateStage, EmploymentType, JobStatus, UserRole } from '@prisma/client';
+import { connectDB, disconnectDB } from './config/db';
+import { prisma } from './lib/prisma';
 
-type SeedJob = {
+const JOBS: Array<{
   title: string;
   company: string;
   location: string;
@@ -15,9 +13,7 @@ type SeedJob = {
   experience: string;
   salaryRange: string;
   status: JobStatus;
-};
-
-const JOBS: SeedJob[] = [
+}> = [
   {
     title: 'Frontend Developer',
     company: 'Northstar Digital',
@@ -35,7 +31,7 @@ const JOBS: SeedJob[] = [
     location: 'New York, NY',
     employmentType: 'FULL_TIME',
     description: 'Build reliable APIs and services for a growing financial platform.',
-    requiredSkills: ['Node.js', 'TypeScript', 'MongoDB'],
+    requiredSkills: ['Node.js', 'TypeScript', 'PostgreSQL'],
     experience: '4+ years',
     salaryRange: '$120,000 - $160,000',
     status: 'OPEN',
@@ -86,7 +82,7 @@ const JOBS: SeedJob[] = [
   },
 ];
 
-type DemoCandidate = {
+const CANDIDATES: Array<{
   name: string;
   email: string;
   phone: string;
@@ -96,13 +92,11 @@ type DemoCandidate = {
   stage: CandidateStage;
   notes: string;
   jobIndex: number;
-};
-
-const CANDIDATES: DemoCandidate[] = [
+}> = [
   { name: 'Maya Chen', email: 'maya.chen@example.com', phone: '212-555-0142', skills: ['React', 'TypeScript', 'CSS'], experienceYears: 4, resumeText: 'Frontend engineer building accessible React applications.', stage: 'APPLIED', notes: '', jobIndex: 0 },
   { name: 'Ethan Brooks', email: 'ethan.brooks@example.com', phone: '646-555-0183', skills: ['React', 'JavaScript', 'Testing Library'], experienceYears: 3, resumeText: 'Frontend developer focused on testing and component systems.', stage: 'SCREENING', notes: '', jobIndex: 0 },
   { name: 'Sofia Ramirez', email: 'sofia.ramirez@example.com', phone: '917-555-0126', skills: ['TypeScript', 'React', 'Design systems'], experienceYears: 5, resumeText: 'Senior engineer with extensive design system experience.', stage: 'INTERVIEW', notes: '', jobIndex: 0 },
-  { name: 'Noah Patel', email: 'noah.patel@example.com', phone: '415-555-0197', skills: ['Node.js', 'TypeScript', 'MongoDB'], experienceYears: 6, resumeText: 'Backend engineer designing APIs and data services.', stage: 'OFFER', notes: '', jobIndex: 1 },
+  { name: 'Noah Patel', email: 'noah.patel@example.com', phone: '415-555-0197', skills: ['Node.js', 'TypeScript', 'PostgreSQL'], experienceYears: 6, resumeText: 'Backend engineer designing APIs and data services.', stage: 'OFFER', notes: '', jobIndex: 1 },
   { name: 'Ava Thompson', email: 'ava.thompson@example.com', phone: '206-555-0114', skills: ['Node.js', 'PostgreSQL', 'REST APIs'], experienceYears: 4, resumeText: 'Built production APIs for customer-facing applications.', stage: 'HIRED', notes: '', jobIndex: 1 },
   { name: 'Lucas Morgan', email: 'lucas.morgan@example.com', phone: '312-555-0168', skills: ['TypeScript', 'Node.js', 'Redis'], experienceYears: 7, resumeText: 'Backend specialist with cloud infrastructure experience.', stage: 'REJECTED', notes: '', jobIndex: 1 },
   { name: 'Isabella Nguyen', email: 'isabella.nguyen@example.com', phone: '617-555-0135', skills: ['Figma', 'Research', 'Prototyping'], experienceYears: 5, resumeText: 'Product designer with strong research and prototyping skills.', stage: 'APPLIED', notes: '', jobIndex: 2 },
@@ -116,132 +110,73 @@ const CANDIDATES: DemoCandidate[] = [
   { name: 'Grace Kim', email: 'grace.kim@example.com', phone: '312-555-0174', skills: ['Playwright', 'CI/CD', 'Accessibility'], experienceYears: 4, resumeText: 'Senior QA specialist focused on accessible release quality.', stage: 'INTERVIEW', notes: '', jobIndex: 5 },
 ];
 
-const seed = async () => {
+const createDemoUser = async (
+  organizationId: string,
+  name: string,
+  email: string,
+  role: UserRole,
+  passwordHash: string
+) =>
+  prisma.user.upsert({
+    where: { email },
+    update: { name, role, organizationId, passwordHash },
+    create: { name, email, role, organizationId, passwordHash },
+  });
+
+const seed = async (): Promise<void> => {
   try {
     await connectDB();
+    const passwordHash = await bcrypt.hash('demo1234', 10);
 
-    // 1. Seed primary Demo Organization
-    let demoOrg = await Organization.findOne({ name: 'HireFlow Demo' });
+    let demoOrg = await prisma.organization.findFirst({ where: { name: 'HireFlow Demo' } });
     if (!demoOrg) {
-      demoOrg = await Organization.create({ name: 'HireFlow Demo' });
+      demoOrg = await prisma.organization.create({ data: { name: 'HireFlow Demo' } });
     }
+    await createDemoUser(demoOrg.id, 'Demo Admin', 'admin@hireflow.com', 'ADMIN', passwordHash);
+    const recruiter = await createDemoUser(demoOrg.id, 'Demo Recruiter', 'demo@hireflow.com', 'RECRUITER', passwordHash);
 
-    // Demo Admin
-    const adminEmail = 'admin@hireflow.com';
-    let admin = await User.findOne({ email: adminEmail });
-    if (admin) {
-      admin.name = 'Demo Admin';
-      admin.password = 'demo1234';
-      admin.role = 'ADMIN';
-      admin.orgId = demoOrg._id as mongoose.Types.ObjectId;
-      await admin.save();
-    } else {
-      admin = await User.create({
-        name: 'Demo Admin',
-        email: adminEmail,
-        password: 'demo1234',
-        role: 'ADMIN',
-        orgId: demoOrg._id,
-      });
-    }
-
-    // Demo Recruiter
-    const recruiterEmail = 'demo@hireflow.com';
-    let recruiter = await User.findOne({ email: recruiterEmail });
-    if (recruiter) {
-      recruiter.name = 'Demo Recruiter';
-      recruiter.password = 'demo1234';
-      recruiter.role = 'RECRUITER';
-      recruiter.orgId = demoOrg._id as mongoose.Types.ObjectId;
-      await recruiter.save();
-    } else {
-      recruiter = await User.create({
-        name: 'Demo Recruiter',
-        email: recruiterEmail,
-        password: 'demo1234',
-        role: 'RECRUITER',
-        orgId: demoOrg._id,
-      });
-    }
-
-    // Clear existing Demo Org records
-    await Candidate.deleteMany({ orgId: demoOrg._id });
-    await Job.deleteMany({ orgId: demoOrg._id });
-
-    const jobs = await Job.create(
-      JOBS.map((job) => ({
-        ...job,
-        orgId: demoOrg._id,
-        createdBy: recruiter._id,
-      }))
+    await prisma.candidate.deleteMany({ where: { organizationId: demoOrg.id } });
+    await prisma.job.deleteMany({ where: { organizationId: demoOrg.id } });
+    const jobs = await Promise.all(
+      JOBS.map((job) =>
+        prisma.job.create({ data: { ...job, organizationId: demoOrg.id, createdById: recruiter.id } })
+      )
     );
-
-    await Candidate.create(
-      CANDIDATES.map(({ jobIndex, ...candidate }) => ({
+    await prisma.candidate.createMany({
+      data: CANDIDATES.map(({ jobIndex, ...candidate }) => ({
         ...candidate,
-        job: jobs[jobIndex]._id,
-        orgId: demoOrg._id,
-        createdBy: recruiter._id,
-      }))
-    );
-
-    // 2. Seed second Organization for multi-tenancy isolation verification
-    let acmeOrg = await Organization.findOne({ name: 'Acme Corporation' });
-    if (!acmeOrg) {
-      acmeOrg = await Organization.create({ name: 'Acme Corporation' });
-    }
-
-    const acmeAdminEmail = 'admin@acme.com';
-    let acmeAdmin = await User.findOne({ email: acmeAdminEmail });
-    if (acmeAdmin) {
-      acmeAdmin.password = 'demo1234';
-      acmeAdmin.orgId = acmeOrg._id as mongoose.Types.ObjectId;
-      await acmeAdmin.save();
-    } else {
-      acmeAdmin = await User.create({
-        name: 'Acme Admin',
-        email: acmeAdminEmail,
-        password: 'demo1234',
-        role: 'ADMIN',
-        orgId: acmeOrg._id,
-      });
-    }
-
-    const acmeViewerEmail = 'viewer@acme.com';
-    let acmeViewer = await User.findOne({ email: acmeViewerEmail });
-    if (acmeViewer) {
-      acmeViewer.password = 'demo1234';
-      acmeViewer.orgId = acmeOrg._id as mongoose.Types.ObjectId;
-      await acmeViewer.save();
-    } else {
-      acmeViewer = await User.create({
-        name: 'Acme Viewer',
-        email: acmeViewerEmail,
-        password: 'demo1234',
-        role: 'VIEWER',
-        orgId: acmeOrg._id,
-      });
-    }
-
-    await Candidate.deleteMany({ orgId: acmeOrg._id });
-    await Job.deleteMany({ orgId: acmeOrg._id });
-
-    const acmeJob = await Job.create({
-      title: 'Principal Architect',
-      company: 'Acme Corporation',
-      location: 'San Francisco, CA',
-      employmentType: 'FULL_TIME',
-      description: 'Lead distributed system design at Acme Corporation.',
-      requiredSkills: ['Distributed Systems', 'Architecture', 'Go'],
-      experience: '8+ years',
-      salaryRange: '$180,000 - $220,000',
-      status: 'OPEN',
-      orgId: acmeOrg._id,
-      createdBy: acmeAdmin._id,
+        jobId: jobs[jobIndex].id,
+        organizationId: demoOrg.id,
+        createdById: recruiter.id,
+      })),
     });
 
-    await Candidate.create([
-      {
+    let acmeOrg = await prisma.organization.findFirst({ where: { name: 'Acme Corporation' } });
+    if (!acmeOrg) {
+      acmeOrg = await prisma.organization.create({ data: { name: 'Acme Corporation' } });
+    }
+    const acmeAdmin = await createDemoUser(acmeOrg.id, 'Acme Admin', 'admin@acme.com', 'ADMIN', passwordHash);
+    await createDemoUser(acmeOrg.id, 'Acme Viewer', 'viewer@acme.com', 'VIEWER', passwordHash);
+
+    await prisma.candidate.deleteMany({ where: { organizationId: acmeOrg.id } });
+    await prisma.job.deleteMany({ where: { organizationId: acmeOrg.id } });
+    const acmeJob = await prisma.job.create({
+      data: {
+        title: 'Principal Architect',
+        company: 'Acme Corporation',
+        location: 'San Francisco, CA',
+        employmentType: 'FULL_TIME',
+        description: 'Lead distributed system design at Acme Corporation.',
+        requiredSkills: ['Distributed Systems', 'Architecture', 'Go'],
+        experience: '8+ years',
+        salaryRange: '$180,000 - $220,000',
+        status: 'OPEN',
+        organizationId: acmeOrg.id,
+        createdById: acmeAdmin.id,
+      },
+    });
+    await prisma.candidate.create({
+      data: {
         name: 'Samir Kassam',
         email: 'samir.kassam@acme-sample.com',
         phone: '415-555-9090',
@@ -250,20 +185,20 @@ const seed = async () => {
         resumeText: 'Enterprise systems architect with extensive Go experience.',
         stage: 'APPLIED',
         notes: 'Acme candidate only.',
-        job: acmeJob._id,
-        orgId: acmeOrg._id,
-        createdBy: acmeAdmin._id,
+        jobId: acmeJob.id,
+        organizationId: acmeOrg.id,
+        createdById: acmeAdmin.id,
       },
-    ]);
+    });
 
     console.log(
-      'Seeded HireFlow Demo Org (admin@hireflow.com, demo@hireflow.com), 6 jobs, 15 candidates; and Acme Corporation (admin@acme.com, viewer@acme.com), 1 job, 1 candidate.'
+      'Seeded HireFlow Demo (admin@hireflow.com, demo@hireflow.com), 6 jobs, 15 candidates; and Acme Corporation (admin@acme.com, viewer@acme.com), 1 job, 1 candidate.'
     );
   } catch (error) {
     console.error('Seeding failed:', error);
     process.exitCode = 1;
   } finally {
-    await mongoose.connection.close();
+    await disconnectDB();
   }
 };
 

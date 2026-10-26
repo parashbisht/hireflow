@@ -9,7 +9,6 @@ describe('Role-Based Access Control (RBAC)', () => {
   let testCandidateId: string;
 
   beforeEach(async () => {
-    // Register Admin
     const adminRes = await request(app).post('/api/auth/register').send({
       name: 'Super Admin',
       email: 'admin@rbac-test.com',
@@ -18,7 +17,6 @@ describe('Role-Based Access Control (RBAC)', () => {
     });
     adminToken = adminRes.body.data.token;
 
-    // Admin creates Recruiter user
     const recUserRes = await request(app)
       .post('/api/auth/users')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -36,7 +34,6 @@ describe('Role-Based Access Control (RBAC)', () => {
     });
     recruiterToken = recLoginRes.body.data.token;
 
-    // Admin creates Viewer user
     const viewUserRes = await request(app)
       .post('/api/auth/users')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -54,7 +51,6 @@ describe('Role-Based Access Control (RBAC)', () => {
     });
     viewerToken = viewLoginRes.body.data.token;
 
-    // Create a base job and candidate for testing writes
     const jobRes = await request(app)
       .post('/api/jobs')
       .set('Authorization', `Bearer ${adminToken}`)
@@ -65,7 +61,7 @@ describe('Role-Based Access Control (RBAC)', () => {
         employmentType: 'FULL_TIME',
         description: 'Testing RBAC',
       });
-    testJobId = jobRes.body.data._id;
+    testJobId = jobRes.body.data.id;
 
     const candRes = await request(app)
       .post('/api/candidates')
@@ -75,7 +71,7 @@ describe('Role-Based Access Control (RBAC)', () => {
         email: 'jane@rbac-test.com',
         job: testJobId,
       });
-    testCandidateId = candRes.body.data._id;
+    testCandidateId = candRes.body.data.id;
   });
 
   it('rejects passwords under 8 characters on registration', async () => {
@@ -181,16 +177,4 @@ describe('Role-Based Access Control (RBAC)', () => {
       .set('Authorization', `Bearer ${viewerToken}`);
     expect(res.status).toBe(403);
   });
-
-  it('VIEWER receives 403 on AI matcher endpoint', async () => {
-    const res = await request(app)
-      .post('/api/ai/resume-match')
-      .set('Authorization', `Bearer ${viewerToken}`)
-      .send({
-        jobDescription: 'Some job description',
-        resumeText: 'Some resume text',
-      });
-    expect(res.status).toBe(403);
-  });
 });
-

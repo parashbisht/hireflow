@@ -1,26 +1,34 @@
-import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
+import 'dotenv/config';
 
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test_jwt_secret_for_ci_only';
 process.env.JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1h';
 
-let mongod: MongoMemoryServer;
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+if (!testDatabaseUrl) {
+  throw new Error('TEST_DATABASE_URL must point to a dedicated PostgreSQL test database');
+}
+
+const databaseName = decodeURIComponent(new URL(testDatabaseUrl).pathname.split('/')[1] ?? '');
+if (!databaseName.endsWith('_test')) {
+  throw new Error('TEST_DATABASE_URL database name must end in "_test"');
+}
+
+process.env.DATABASE_URL = testDatabaseUrl;
+const { prisma } = require('../src/lib/prisma') as typeof import('../src/lib/prisma');
 
 beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
-  const uri = mongod.getUri();
-  await mongoose.connect(uri);
+  await prisma.$connect();
 });
 
 afterEach(async () => {
-  const collections = mongoose.connection.collections;
-  for (const key in collections) {
-    await collections[key].deleteMany({});
-  }
+  await prisma.invoiceItem.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.candidate.deleteMany();
+  await prisma.job.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.organization.deleteMany();
 });
 
 afterAll(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.connection.close();
-  await mongod.stop();
+  await prisma.$disconnect();
 });
