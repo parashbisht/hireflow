@@ -135,17 +135,17 @@ const StageColumn = ({ stage, candidates, isUpdating }: {
   return (
     <section
       ref={setNodeRef}
-      className={`flex w-[280px] shrink-0 flex-col overflow-hidden rounded-xl border border-slate-200 border-t-4 bg-slate-50 ${stageStyle.accent} ${isOver ? 'bg-blue-50/60 dark:bg-blue-950/30' : ''} dark:border-slate-800 dark:bg-slate-900`}
+      className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-200 border-t-4 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-md ${stageStyle.accent} ${isOver ? 'scale-[1.01] ring-2 ring-indigo-500 shadow-lg dark:ring-indigo-400' : ''} dark:border-slate-800 dark:bg-slate-900`}
     >
-      <header className={`flex items-center justify-between px-3 py-3 text-sm font-semibold ${stageStyle.header}`}>
-        <h2>{STAGE_LABELS[stage]}</h2>
-        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${stageStyle.count}`}>{candidates.length}</span>
+      <header className={`flex items-center justify-between gap-2 px-4 py-3.5 text-sm font-semibold ${stageStyle.header}`}>
+        <h2 className="truncate">{STAGE_LABELS[stage]}</h2>
+        <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${stageStyle.count}`}>{candidates.length}</span>
       </header>
-      <div className="flex min-h-36 flex-1 flex-col gap-2.5 p-2.5">
+      <div className="flex min-h-36 flex-1 flex-col gap-3 bg-slate-50/70 p-3 dark:bg-slate-950/40">
         {candidates.length === 0 ? (
-          <div className="flex flex-col items-center py-6 text-center text-slate-400 dark:text-slate-500">
+          <div className={`flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed px-3 py-8 text-center transition-colors ${isOver ? 'border-indigo-300 bg-indigo-50/70 text-indigo-500 dark:border-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-300' : 'border-slate-200 text-slate-400 dark:border-slate-700 dark:text-slate-500'}`}>
             <CircleDashed size={18} aria-hidden="true" />
-            <p className="mt-2 text-xs">No candidates</p>
+            <p className="mt-2 text-xs font-medium">{isViewer ? 'No candidates in this stage' : 'Drop a candidate here'}</p>
           </div>
         ) : (
           candidates.map((candidate) => (
@@ -296,15 +296,21 @@ const Pipeline = () => {
           onDragEnd={handleDragEnd}
           onDragCancel={() => setActiveCandidateId(null)}
         >
-          <div className="overflow-x-auto pb-3">
-            <div className="flex min-w-max gap-3">
+          <div
+            className="pipeline-scroll overflow-x-auto pb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
+            role="region"
+            aria-label="Hiring stages. Scroll horizontally to view every stage."
+            tabIndex={0}
+          >
+            <div className="flex min-w-max items-stretch gap-4">
               {STAGES.map((stage) => (
-                <StageColumn
-                  key={stage}
-                  stage={stage}
-                  candidates={candidates.filter((candidate) => candidate.stage === stage)}
-                  isUpdating={updatingId !== null}
-                />
+                <div key={stage} className="w-[280px] shrink-0">
+                  <StageColumn
+                    stage={stage}
+                    candidates={candidates.filter((candidate) => candidate.stage === stage)}
+                    isUpdating={updatingId !== null}
+                  />
+                </div>
               ))}
             </div>
           </div>
