@@ -16,18 +16,6 @@ export interface Job {
   updatedAt: string;
 }
 
-export interface JobFormData {
-  title: string;
-  company: string;
-  location: string;
-  employmentType: EmploymentType;
-  description: string;
-  requiredSkills: string;
-  experience: string;
-  salaryRange: string;
-  status: JobStatus;
-}
-
 export interface JobListResponse {
   success: boolean;
   data: Job[];

@@ -13,11 +13,6 @@ export const getJobs = async (params: GetJobsParams = {}) => {
   return res.data;
 };
 
-export const getJobById = async (id: string) => {
-  const res = await api.get<{ success: boolean; data: Job }>(`/jobs/${id}`);
-  return res.data.data;
-};
-
 export interface JobPayload {
   title: string;
   company: string;

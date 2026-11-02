@@ -14,11 +14,6 @@ export const getCandidates = async (params: GetCandidatesParams = {}) => {
   return res.data;
 };
 
-export const getCandidateById = async (id: string) => {
-  const res = await api.get<{ success: boolean; data: Candidate }>(`/candidates/${id}`);
-  return res.data.data;
-};
-
 export const createCandidate = async (payload: CandidatePayload) => {
   const res = await api.post<{ success: boolean; data: Candidate }>('/candidates', payload);
   return res.data.data;
