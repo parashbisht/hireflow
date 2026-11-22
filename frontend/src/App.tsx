@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Jobs from './pages/Jobs';
 import Candidates from './pages/Candidates';
 import Pipeline from './pages/Pipeline';
+import Team from './pages/Team';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
               <Route path="/jobs" element={<ProtectedRoute><Jobs /></ProtectedRoute>} />
               <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} />
               <Route path="/pipeline" element={<ProtectedRoute><Pipeline /></ProtectedRoute>} />
+              <Route path="/team" element={<ProtectedRoute roles={['ADMIN']}><Team /></ProtectedRoute>} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

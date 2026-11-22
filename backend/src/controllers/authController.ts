@@ -176,3 +176,17 @@ export const createUserInOrg = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ success: false, message: 'Failed to create user in organization' });
   }
 };
+
+export const getUsersInOrg = async (req: AuthRequest, res: Response) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { organizationId: req.user!.orgId },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    });
+
+    return res.status(200).json({ success: true, data: users });
+  } catch (_error) {
+    return res.status(500).json({ success: false, message: 'Failed to fetch organization users' });
+  }
+};

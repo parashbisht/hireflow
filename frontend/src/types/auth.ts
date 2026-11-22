@@ -9,6 +9,14 @@ export interface User {
   organizationName?: string;
 }
 
+export interface OrganizationUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  createdAt: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   data: {

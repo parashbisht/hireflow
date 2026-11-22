@@ -111,6 +111,28 @@ describe('Role-Based Access Control (RBAC)', () => {
     expect(res.body.message).toMatch(/forbidden/i);
   });
 
+  it('only admins can list organization users', async () => {
+    const res = await request(app)
+      .get('/api/auth/users')
+      .set('Authorization', `Bearer ${viewerToken}`);
+    expect(res.status).toBe(403);
+  });
+
+  it('admin can list organization users without exposing password hashes', async () => {
+    const res = await request(app)
+      .get('/api/auth/users')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(3);
+    expect(res.body.data.map((user: { email: string }) => user.email)).toEqual([
+      'recruiter@rbac-test.com',
+      'admin@rbac-test.com',
+      'viewer@rbac-test.com',
+    ]);
+    expect(res.body.data[0]).not.toHaveProperty('passwordHash');
+  });
+
   it('VIEWER can read jobs, candidates and dashboard', async () => {
     const jobsRes = await request(app).get('/api/jobs').set('Authorization', `Bearer ${viewerToken}`);
     expect(jobsRes.status).toBe(200);

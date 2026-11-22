@@ -8,9 +8,10 @@ HireFlow is a full-stack recruitment management application for organizing job o
 - Create, search, filter, update, and delete job openings
 - Candidate records linked to jobs, with skills, experience, resume text, notes, and hiring stage
 - Drag-and-drop hiring pipeline with optimistic stage updates
+- Admin team page to view organization members and create users with role-based access
 - Dashboard with job and candidate totals, stage and job charts, and recent candidates
 - Responsive navigation and layouts for desktop and mobile
-- Demo data seeding for a recruiter, six jobs, and fifteen candidates
+- Demo data seeding for two organizations, sample role-based accounts, seven jobs, and sixteen candidates
 
 ## Tech Stack
 
@@ -85,7 +86,7 @@ npm run dev
 ```
 
 The API runs at `http://localhost:5000` by default. This migration starts with a fresh
-PostgreSQL database; it does not copy existing MongoDB records.
+PostgreSQL database.
 
 ### Frontend
 
@@ -136,9 +137,11 @@ Protected endpoints require `Authorization: Bearer <token>`. Registration and lo
 
 | Area | Method | Endpoint | Description |
 | --- | --- | --- | --- |
-| Auth | `POST` | `/api/auth/register` | Register a recruiter |
+| Auth | `POST` | `/api/auth/register` | Create an organization and its first admin |
 | Auth | `POST` | `/api/auth/login` | Log in and receive a JWT |
 | Auth | `GET` | `/api/auth/me` | Get the authenticated user |
+| Auth | `GET` | `/api/auth/users` | List users in the organization (admin only) |
+| Auth | `POST` | `/api/auth/users` | Create a user in the organization (admin only) |
 | Jobs | `GET` | `/api/jobs` | List, search, and filter jobs |
 | Jobs | `GET` | `/api/jobs/:id` | Get a job |
 | Jobs | `POST` | `/api/jobs` | Create a job |
@@ -159,6 +162,8 @@ Run `npm run seed` from `backend/` to create the demo account and sample data.
 
 - Email: `demo@hireflow.com`
 - Password: `demo1234`
+
+The seeded admin account is `admin@hireflow.com` with the same password.
 
 ## Performance
 Run `npm run benchmark` from `backend/` to measure list, cursor, and search queries against

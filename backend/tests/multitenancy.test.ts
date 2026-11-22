@@ -107,6 +107,15 @@ describe('Multi-Tenancy Isolation', () => {
     expect(res.body.data[0].id).toBe(orgAJobId);
   });
 
+  it('organization user list does not expose users from another organization', async () => {
+    const res = await request(app)
+      .get('/api/auth/users')
+      .set('Authorization', `Bearer ${orgAToken}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.map((user: { email: string }) => user.email)).toEqual(['alice@orga.com']);
+  });
+
   it('Org A can read its own candidate', async () => {
     const res = await request(app)
       .get(`/api/candidates/${orgACandidateId}`)

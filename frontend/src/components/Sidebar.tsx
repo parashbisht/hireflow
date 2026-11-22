@@ -10,7 +10,8 @@ const navItems = [
 ];
 
 const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
-  const { user, role, logout } = useAuth();
+  const { user, role, logout, isAdmin } = useAuth();
+  const visibleNavItems = isAdmin ? [...navItems, { to: '/team', label: 'Team' }] : navItems;
 
   return (
     <>
@@ -46,7 +47,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) 
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

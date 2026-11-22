@@ -9,7 +9,7 @@ const sampleJob = {
   location: 'Remote',
   employmentType: 'FULL_TIME',
   description: 'Build APIs with Node.js.',
-  requiredSkills: ['Node.js', 'MongoDB'],
+  requiredSkills: ['Node.js', 'PostgreSQL'],
 };
 
 const setupAuthAndJob = async () => {
